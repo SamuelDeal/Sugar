@@ -1,0 +1,12 @@
+sugar.pro.user
+codegen.o
+corefn.o
+functionimpl.o
+functionlist.o
+lexer.cpp
+lexer.o
+parser.cpp
+parser.hpp
+parser.o
+sugar
+sugar.o

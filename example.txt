@@ -1,0 +1,13 @@
+Int do_math(int a) {
+  Int x = a * 5
+  echo(x)
+}
+
+Int test(int a){
+    return a*3
+}
+
+do_math(500)
+echo(501)
+echo(10.0/3.0)
+echo(test(12))
