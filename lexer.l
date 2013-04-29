@@ -44,6 +44,7 @@ extern const char* g_current_filename;
 bool yySkipNL = true;
 std::stack<bool> yyIndentSensitiveStack;
 std::queue<int> yyTokenQueue;
+bool yySeachLParent = false;
 
 bool yyIndentSensitive(){
     return yyIndentSensitiveStack.empty() ? false : yyIndentSensitiveStack.top();
@@ -138,6 +139,7 @@ extern FILE * yyin;
   *        yycolumn inside that rule!
   */
 <*>\n {
+    yySeachLParent = false;
     set_yycolumn(0);
     yylineno--; REJECT;
 }
@@ -148,23 +150,96 @@ extern FILE * yyin;
     into the <indent> mode by hand there.
  */
 <initial>.  {
+    yySeachLParent = false;
     set_yycolumn(yycolumn-1);
     indent_caller = normal;
     yyless(0);
     BEGIN(yyIndentSensitive() ? indent : normal);
 }
 <initial>\n {
+    yySeachLParent = false;
     indent_caller = normal;
     yyless(0);
     BEGIN(yyIndentSensitive() ? indent : normal);
 }
 
+
+<normal>[\r\n]+                 {
+    yySeachLParent = false;
+    g_indent_count = 0;
+    g_indent_line_emitted = false;
+    indent_caller = YY_START;
+    BEGIN(yyIndentSensitive() ? indent : normal);
+    if(!yySkipNL){
+        yySkipNL = true;
+        return TOK_NL;
+    }
+}
+<normal>[ \t]                       { yySeachLParent = false; };
+<normal>"return"                    { yySkipNL = false; yySeachLParent = false; return TOKEN(TRETURN); }
+<normal>[A-Z][a-zA-Z0-9_\?]*        { yySkipNL = false; yySeachLParent = false; SAVE_TOKEN; return TTYPENAME; }
+<normal>[a-z_][a-zA-Z0-9_\?!]*      { yySkipNL = false; yySeachLParent = true; SAVE_TOKEN; return TIDENTIFIER; }
+<normal>[0-9]+\.[0-9]*              { yySkipNL = false; yySeachLParent = false; SAVE_TOKEN; return TDOUBLE; }
+<normal>[0-9]+                      { yySkipNL = false; yySeachLParent = false; SAVE_TOKEN; return TINTEGER; }
+<normal>"="                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TEQUAL); }
+<normal>"=="                        { yySkipNL = true; yySeachLParent = false; return TOKEN(TCEQ); }
+<normal>"!="                        { yySkipNL = true; yySeachLParent = false; return TOKEN(TCNE); }
+<normal>"<"                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TCLT); }
+<normal>"<="                        { yySkipNL = true; yySeachLParent = false; return TOKEN(TCLE); }
+<normal>">"                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TCGT); }
+<normal>">="                        { yySkipNL = true; yySeachLParent = false; return TOKEN(TCGE); }
+<normal>"("                         {
+    yySkipNL = true;
+    bool searchLParent = yySeachLParent;
+    yySeachLParent = false;
+    if(searchLParent){
+        yyReturn(TOK_NO_SPACE, TLPAREN);
+    }
+    else{
+        return TOKEN(TLPAREN);
+    }
+}
+<normal>")"                         { yySkipNL = false; yySeachLParent = false; return TOKEN(TRPAREN); }
+<normal>"{"                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TLBRACE); }
+<normal>"}"                         {
+    yySeachLParent = false;
+    if(!yySkipNL){
+        yyReturn(TOK_IMPLICIT_END_INSTR, TRBRACE);
+    }
+    else{
+        yySkipNL = false;
+        return TOKEN(TRBRACE);
+    }
+}
+<normal>"."                         { yySkipNL = false; yySeachLParent = false; return TOKEN(TDOT); }
+<normal>","                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TCOMMA); }
+<normal>"+"                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TPLUS); }
+<normal>"-"                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TMINUS); }
+<normal>"*"                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TMUL); }
+<normal>"/"                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TDIV); }
+<normal>";"                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TSEMICOL); }
+<normal><<EOF>>                     {
+    yySeachLParent = false;
+    if(!yySkipNL){
+        yySkipNL = true;
+        yyReturn(TOK_IMPLICIT_END_INSTR, EOF);
+    }
+    else{
+        yyterminate();
+    }
+}
+<normal>.                           printf("Unknown token!\n"); yyterminate();
+
+
+
  /* The following are the rules that keep track of indentation. */
-<indent>[ \t]*\n {
+<indent>[ \t]*\n                    {
+    yySeachLParent = false;
     g_indent_count = 0;
     g_indent_line_emitted = false; /* ignoring blank line */
 }
-<indent>" "+    {
+<indent>" "+                        {
+    yySeachLParent = false;
     if(g_indent_context.style == ContextIndentInfo::UNDEFINED){
         g_indent_context.style = ContextIndentInfo::SPACE;
         g_indent_context.spaceSize = yyleng;
@@ -188,6 +263,7 @@ extern FILE * yyin;
     g_indent_count += yyleng / g_indent_context.spaceSize;
 }
 <indent>\t      {
+    yySeachLParent = false;
     if(g_indent_context.style == ContextIndentInfo::UNDEFINED){
             g_indent_context.style = ContextIndentInfo::TAB;
     }
@@ -202,7 +278,8 @@ extern FILE * yyin;
 #endif
     ++g_indent_count;
 }
-<indent><<EOF>> {
+<indent><<EOF>>                             {
+    yySeachLParent = false;
     // When encountering the end of file, we want to emit an
     // outdent for all indents currently left.
     for(int i = 0; i < g_indent_context.indentCount; i++){
@@ -212,7 +289,8 @@ extern FILE * yyin;
     yyTokenQueue.push(EOF);
 }
 
-<indent>.       {
+<indent>.                                   {
+    yySeachLParent = false;
     set_yycolumn(yycolumn-1);
     if(g_indent_count == g_indent_context.indentCount) {
         yyless(0);
@@ -240,58 +318,5 @@ extern FILE * yyin;
         }
     }
 }
-
-<normal>[\r\n]+                 {
-    g_indent_count = 0;
-    g_indent_line_emitted = false;
-    indent_caller = YY_START;
-    BEGIN(yyIndentSensitive() ? indent : normal);
-    if(!yySkipNL){
-        yySkipNL = true;
-        return TOK_NL;
-    }
-}
-<normal>[ \t]					;
-<normal>"return"				{ yySkipNL = false; return TOKEN(TRETURN); }
-<normal>[A-Z][a-zA-Z0-9_\?]*    { yySkipNL = false; SAVE_TOKEN; return TTYPENAME; }
-<normal>[a-z_][a-zA-Z0-9_\?!]* 	{ yySkipNL = false; SAVE_TOKEN; return TIDENTIFIER; }
-<normal>[0-9]+\.[0-9]* 			{ yySkipNL = false; SAVE_TOKEN; return TDOUBLE; }
-<normal>[0-9]+					{ yySkipNL = false; SAVE_TOKEN; return TINTEGER; }
-<normal>"="						{ yySkipNL = true; return TOKEN(TEQUAL); }
-<normal>"=="					{ yySkipNL = true; return TOKEN(TCEQ); }
-<normal>"!="					{ yySkipNL = true; return TOKEN(TCNE); }
-<normal>"<"						{ yySkipNL = true; return TOKEN(TCLT); }
-<normal>"<="					{ yySkipNL = true; return TOKEN(TCLE); }
-<normal>">"						{ yySkipNL = true; return TOKEN(TCGT); }
-<normal>">="					{ yySkipNL = true; return TOKEN(TCGE); }
-<normal>"("						{ yySkipNL = true; return TOKEN(TLPAREN); }
-<normal>")"						{ yySkipNL = false; return TOKEN(TRPAREN); }
-<normal>"{"						{ yySkipNL = true; return TOKEN(TLBRACE); }
-<normal>"}"						{
-    if(!yySkipNL){
-        yyReturn(TOK_IMPLICIT_END_INSTR, TRBRACE);
-    }
-    else{
-        yySkipNL = false;
-        return TOKEN(TRBRACE);
-    }
-}
-<normal>"."						{ yySkipNL = false; return TOKEN(TDOT); }
-<normal>","						{ yySkipNL = true; return TOKEN(TCOMMA); }
-<normal>"+"						{ yySkipNL = true; return TOKEN(TPLUS); }
-<normal>"-"						{ yySkipNL = true; return TOKEN(TMINUS); }
-<normal>"*"						{ yySkipNL = true; return TOKEN(TMUL); }
-<normal>"/"						{ yySkipNL = true; return TOKEN(TDIV); }
-<normal>";"						{ yySkipNL = true; return TOKEN(TSEMICOL); }
-<normal><<EOF>>                 {
-    if(!yySkipNL){
-        yySkipNL = true;
-        yyReturn(TOK_IMPLICIT_END_INSTR, EOF);
-    }
-    else{
-        yyterminate();
-    }
-}
-<normal>.						printf("Unknown token!\n"); yyterminate();
 
 %%

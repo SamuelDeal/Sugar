@@ -61,7 +61,7 @@ typedef struct YYLTYPE
 %token <token> TCEQ TCNE TCLT TCLE TCGT TCGE TEQUAL
 %token <token> TLPAREN TRPAREN TLBRACE TRBRACE TCOMMA TDOT
 %token <token> TPLUS TMINUS TMUL TDIV
-%token <token> TOK_INDENT TOK_BAD_INDENT TOK_OUTDENT TOK_NL TSEMICOL TOK_IMPLICIT_END_INSTR
+%token <token> TOK_INDENT TOK_BAD_INDENT TOK_OUTDENT TOK_NL TSEMICOL TOK_IMPLICIT_END_INSTR TOK_NO_SPACE
 %token <token> TRETURN
 
 /* Define the type of node our nonterminal symbols represent.
@@ -72,16 +72,18 @@ typedef struct YYLTYPE
 %type <ident> ident typename
 %type <stmt> stmt var_decl func_decl program_stmt
 %type <varvec> func_decl_args
-%type <exprvec> func_call_args
-%type <expr> numeric expr
+%type <exprvec> func_call_args func_call_args_expl
+%type <expr> numeric expr expr_expl func_call_impl func_call_expl
 %type <block> program block_stmts program_stmts block
 
 /* Operator precedence for mathematical operators */
 
-%nonassoc TLPAREN
+%nonassoc IMPLICIT_CALL
+%nonassoc TCOMMA
 
 %left TMUL TDIV
 %left TPLUS TMINUS
+
 
 %start program
 
@@ -112,25 +114,43 @@ numeric         : TINTEGER { $$ = new NInteger(atol($1->c_str())); delete $1; }
                 | TDOUBLE { $$ = new NDouble(atof($1->c_str())); delete $1; }
                 ;
 
-expr            : ident { $<ident>$ = $1; }
-                | numeric { $$ = $1; }
+expr			: expr_expl { $$ = $1; }
                 | expr TMUL expr { $$ = new NBinaryOperator(*$1, $2, *$3); }
                 | expr TDIV expr { $$ = new NBinaryOperator(*$1, $2, *$3); }
                 | expr TPLUS expr { $$ = new NBinaryOperator(*$1, $2, *$3); }
                 | expr TMINUS expr { $$ = new NBinaryOperator(*$1, $2, *$3); }
-                | ident TLPAREN func_call_args TRPAREN { $$ = new NMethodCall(*$1, *$3); delete $3; }
-                | ident func_call_args { $$ = new NMethodCall(*$1, *$2); delete $2; }
+                | func_call_impl { $$ = $1; }
                 ;
 
-func_call_args  : /*blank*/  { $$ = new ExpressionList(); }
-                | expr { $$ = new ExpressionList(); $$->push_back($1); }
-                | func_call_args TCOMMA expr  { $1->push_back($3); }
+expr_expl       : TLPAREN expr TRPAREN { $$ = $2; }
+                | ident { $<ident>$ = $1; /* WARNING: var or implicit function call without args */ }
+                | numeric { $$ = $1; }
+                | expr_expl TMUL expr_expl { $$ = new NBinaryOperator(*$1, $2, *$3); }
+                | expr_expl TDIV expr_expl { $$ = new NBinaryOperator(*$1, $2, *$3); }
+                | expr_expl TPLUS expr_expl { $$ = new NBinaryOperator(*$1, $2, *$3); }
+                | expr_expl TMINUS expr_expl { $$ = new NBinaryOperator(*$1, $2, *$3); }
+                | func_call_expl { $$ = $1; }
                 ;
+
+func_call_impl  : ident func_call_args_expl %prec IMPLICIT_CALL { $$ = new NMethodCall(*$1, *$2); delete $2; }
+                ;
+
+func_call_expl  : ident TOK_NO_SPACE TLPAREN func_call_args TRPAREN { $$ = new NMethodCall(*$1, *$4); delete $4; }
+                | ident TOK_NO_SPACE TLPAREN TRPAREN { $$ = new NMethodCall(*$1); }
+                ;
+
+func_call_args  : expr { $$ = new ExpressionList(); $$->push_back($1); }
+                | func_call_args TCOMMA expr { $1->push_back($3); }
+                ;
+
+func_call_args_expl     : expr_expl { $$ = new ExpressionList(); $$->push_back($1); }
+                        | func_call_args_expl TCOMMA expr_expl { $1->push_back($3); }
+                        ;
 
 typename        : TTYPENAME { $$ = new NIdentifier(*$1); delete $1; }
                 ;
 
-ident           : TIDENTIFIER { $$ = new NIdentifier(*$1); delete $1; }
+ident           : TIDENTIFIER { $$ = new NIdentifier(*$1); delete $1; /* WARNING: var or implicit function call without args */ }
                 ;
 
 var_decl        : typename ident { $$ = new NVariableDeclaration(*$1, *$2); }
