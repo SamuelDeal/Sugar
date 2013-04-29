@@ -10,3 +10,8 @@ parser.hpp
 parser.o
 sugar
 sugar.o
+example2.txt
+outfile.ps
+parser.dot
+parser.output
+parser.ps

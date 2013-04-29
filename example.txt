@@ -1,13 +1,14 @@
-Int do_math(int a) {
-  Int x = a * 5
+Int do_math(Int a)
+  Int x = a * 5 + 3
   echo(x)
-}
+  5
 
-Int test(int a){
-    return a*3
+Int test(Int a){
+    return 3
+    echo(a)
 }
 
 do_math(500)
 echo(501)
 echo(10.0/3.0)
-echo(test(12))
+echo(test(5))

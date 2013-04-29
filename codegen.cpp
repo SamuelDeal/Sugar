@@ -210,8 +210,9 @@ Value* NFunctionDeclaration::codeGen(CodeGenContext& context)
                 types.push_back(argumentValue->getType());
         }
 
-        block.codeGen(context);
-        ReturnInst::Create(getGlobalContext(), returnValue, bblock);
+        Value *blockReturnValue = block.codeGen(context);
+        Value *localReturnValue = returnValue != NULL ? returnValue : blockReturnValue;
+        ReturnInst::Create(getGlobalContext(), localReturnValue, bblock);
 
         context.popBlock();
         core::functionList.addFunction(id.name, function, types);

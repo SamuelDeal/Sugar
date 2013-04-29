@@ -70,15 +70,6 @@ private:
         llvm::Value* generate(llvm::Instruction::BinaryOps ops, CodeGenContext& context) const;
 };
 
-class NAssignment : public NExpression {
-public:
-        NIdentifier& lhs;
-        NExpression& rhs;
-        NAssignment(NIdentifier& lhs, NExpression& rhs) :
-                lhs(lhs), rhs(rhs) { }
-        virtual llvm::Value* codeGen(CodeGenContext& context);
-};
-
 class NBlock : public NExpression {
 public:
         StatementList statements;
@@ -99,6 +90,15 @@ public:
         NExpression& expression;
         NReturnStatement(NExpression& expression) :
                 expression(expression) { }
+        virtual llvm::Value* codeGen(CodeGenContext& context);
+};
+
+class NAssignment : public NStatement {
+public:
+        NIdentifier& lhs;
+        NExpression& rhs;
+        NAssignment(NIdentifier& lhs, NExpression& rhs) :
+                lhs(lhs), rhs(rhs) { }
         virtual llvm::Value* codeGen(CodeGenContext& context);
 };
 

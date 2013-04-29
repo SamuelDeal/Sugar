@@ -3,6 +3,8 @@
 #include <iostream>
 #include <string.h>
 #include <queue>
+#include <stdarg.h>
+#include <stack>
 
 #if ! defined YYLTYPE && ! defined YYLTYPE_IS_DECLARED
 #define YYLTYPE YYLTYPE
@@ -40,8 +42,21 @@ bool g_indent_line_emitted = false;
 
 extern const char* g_current_filename;
 bool yySkipNL = true;
-bool yyIndentSensitive = false;
+std::stack<bool> yyIndentSensitiveStack;
 std::queue<int> yyTokenQueue;
+
+bool yyIndentSensitive(){
+    return yyIndentSensitiveStack.empty() ? false : yyIndentSensitiveStack.top();
+}
+
+void yyQueueTokens(int count, ...){
+    va_list ap;
+    va_start(ap, count);
+    for (int i = 0; i < count; i++){
+        yyTokenQueue.push(va_arg(ap, int));
+    }
+    va_end(ap);
+}
 
 /* Don't mangle yylex please! */
 #define YY_DECL extern "C" int yylex()
@@ -81,6 +96,10 @@ void lyyerror(const char *s){
 //extern "C" int yywrap() { }
 
 extern FILE * yyin;
+
+#define VA_NARGS_IMPL(_1, _2, _3, _4, _5, N, ...) N
+#define VA_NARGS(...) VA_NARGS_IMPL(__VA_ARGS__, 5, 4, 3, 2, 1)
+#define yyReturn(token, ...) yyQueueTokens(VA_NARGS(__VA_ARGS__), __VA_ARGS__); return TOKEN(token);
 %}
 
 
@@ -88,7 +107,6 @@ extern FILE * yyin;
  /* This is a sub-parser (state) for indentation-sensitive scoping */
 %x initial
 %x indent
-%x end
 %s normal
 
  /* %option 8bit reentrant bison-bridge */
@@ -108,7 +126,7 @@ extern FILE * yyin;
             yyterminate();
         }
         else{
-            return result;
+            return TOKEN(result);
         }
     }
 
@@ -133,12 +151,12 @@ extern FILE * yyin;
     set_yycolumn(yycolumn-1);
     indent_caller = normal;
     yyless(0);
-    BEGIN(yyIndentSensitive ? indent : normal);
+    BEGIN(yyIndentSensitive() ? indent : normal);
 }
 <initial>\n {
     indent_caller = normal;
     yyless(0);
-    BEGIN(yyIndentSensitive ? indent : normal);
+    BEGIN(yyIndentSensitive() ? indent : normal);
 }
 
  /* The following are the rules that keep track of indentation. */
@@ -187,15 +205,11 @@ extern FILE * yyin;
 <indent><<EOF>> {
     // When encountering the end of file, we want to emit an
     // outdent for all indents currently left.
-    if(g_indent_context.indentCount == 0) {
-        yyterminate();
+    for(int i = 0; i < g_indent_context.indentCount; i++){
+        yyTokenQueue.push(TOK_OUTDENT);
+        yyTokenQueue.push(TOK_IMPLICIT_END_INSTR);
     }
-    else {
-        for(int i = 0; i < g_indent_context.indentCount; i++){
-            unput(' ');
-        }
-        BEGIN(end);
-    }
+    yyTokenQueue.push(EOF);
 }
 
 <indent>.       {
@@ -207,7 +221,7 @@ extern FILE * yyin;
     else if(g_indent_count < g_indent_context.indentCount){
         --g_indent_context.indentCount;
         yyless(0);
-        return TOK_OUTDENT;
+        yyReturn(TOK_OUTDENT, TOK_IMPLICIT_END_INSTR);
     }
     else if(g_indent_count > g_indent_context.indentCount){
         yyless(0);
@@ -227,14 +241,11 @@ extern FILE * yyin;
     }
 }
 
-<end>.          { set_yycolumn(yycolumn-1); return TOK_OUTDENT; }
-
-
 <normal>[\r\n]+                 {
     g_indent_count = 0;
     g_indent_line_emitted = false;
     indent_caller = YY_START;
-    BEGIN(yyIndentSensitive ? indent : normal);
+    BEGIN(yyIndentSensitive() ? indent : normal);
     if(!yySkipNL){
         yySkipNL = true;
         return TOK_NL;
@@ -242,8 +253,8 @@ extern FILE * yyin;
 }
 <normal>[ \t]					;
 <normal>"return"				{ yySkipNL = false; return TOKEN(TRETURN); }
-<normal>[A-Z][a-zA-Z0-9_]*      { yySkipNL = false; SAVE_TOKEN; return TTYPENAME; }
-<normal>[a-z_][a-zA-Z0-9_]* 	{ yySkipNL = false; SAVE_TOKEN; return TIDENTIFIER; }
+<normal>[A-Z][a-zA-Z0-9_\?]*    { yySkipNL = false; SAVE_TOKEN; return TTYPENAME; }
+<normal>[a-z_][a-zA-Z0-9_\?!]* 	{ yySkipNL = false; SAVE_TOKEN; return TIDENTIFIER; }
 <normal>[0-9]+\.[0-9]* 			{ yySkipNL = false; SAVE_TOKEN; return TDOUBLE; }
 <normal>[0-9]+					{ yySkipNL = false; SAVE_TOKEN; return TINTEGER; }
 <normal>"="						{ yySkipNL = true; return TOKEN(TEQUAL); }
@@ -258,8 +269,7 @@ extern FILE * yyin;
 <normal>"{"						{ yySkipNL = true; return TOKEN(TLBRACE); }
 <normal>"}"						{
     if(!yySkipNL){
-        yyTokenQueue.push(TOKEN(TRBRACE));
-        return TOKEN(TOK_IMPLICIT_END_INSTR);
+        yyReturn(TOK_IMPLICIT_END_INSTR, TRBRACE);
     }
     else{
         yySkipNL = false;
@@ -276,8 +286,7 @@ extern FILE * yyin;
 <normal><<EOF>>                 {
     if(!yySkipNL){
         yySkipNL = true;
-        yyTokenQueue.push(EOF);
-        return TOKEN(TOK_IMPLICIT_END_INSTR);
+        yyReturn(TOK_IMPLICIT_END_INSTR, EOF);
     }
     else{
         yyterminate();

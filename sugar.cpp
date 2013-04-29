@@ -21,11 +21,11 @@ int main(int argc, char **argv)
             yyin = fopen(argv[1],"r");
         }
         yyparse();
-        /*// see http://comments.gmane.org/gmane.comp.compilers.llvm.devel/33877
+        // see http://comments.gmane.org/gmane.comp.compilers.llvm.devel/33877
         InitializeNativeTarget();
         CodeGenContext context;
         context.generateCode(*programBlock);
-        context.runCode();*/
+        context.runCode();
 
         return 0;
 }
