@@ -15,3 +15,6 @@ outfile.ps
 parser.dot
 parser.output
 parser.ps
+EditLineReader.o
+complete.o
+lexer.hpp

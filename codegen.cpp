@@ -94,11 +94,16 @@ Value* NMethodCall::codeGen(CodeGenContext& context)
         for(std::vector<Value *>::const_iterator i = args.begin(); i != args.end(); i++){
             types.push_back((*i)->getType());
         }
-        //Function *function = context.module->getFunction(id.name.c_str());
         Function *function = core::functionList.getFunction(id.name, types);
+
         if (function == NULL) {
-                std::cerr << "no such function " << id.name << endl;
+            if (context.locals().find(id.name) == context.locals().end()) {
+                std::cerr << "No variable not function with that name variable " << id.name << endl;
+                return NULL;
+            }
+            return new LoadInst(context.locals()[id.name], "", false, context.currentBlock());
         }
+
         CallInst *call = CallInst::Create(function, makeArrayRef(args), "", context.currentBlock());
         std::cout << "Creating method call: " << id.name << endl;
         return call;

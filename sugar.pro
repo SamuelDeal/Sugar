@@ -3,13 +3,20 @@ SOURCES += \
     codegen.cpp \
     corefn.cpp \
     functionlist.cpp \
-    functionimpl.cpp
+    functionimpl.cpp \
+    complete.c \
+    EditLineReader.cpp \
+    sugari.cpp \
+    test.cpp
 
 HEADERS += \
     codegen.h \
     node.h \
     functionlist.h \
-    functionimpl.h
+    functionimpl.h \
+    complete.h \
+    EditLineReader.h \
+    LineReader.h
 
 OTHER_FILES += \
     parser.y \

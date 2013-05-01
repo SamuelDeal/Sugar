@@ -101,6 +101,19 @@ extern FILE * yyin;
 #define VA_NARGS_IMPL(_1, _2, _3, _4, _5, N, ...) N
 #define VA_NARGS(...) VA_NARGS_IMPL(__VA_ARGS__, 5, 4, 3, 2, 1)
 #define yyReturn(token, ...) yyQueueTokens(VA_NARGS(__VA_ARGS__), __VA_ARGS__); return TOKEN(token);
+
+#define READLINE 1
+
+#ifdef READLINE
+
+
+#undef  YY_INPUT
+#define YY_INPUT(buf,result,max_size) \
+    rl_input((char *)buf, &result, max_size)
+
+static void rl_input (char *buf, int  *result, int   max);
+
+#endif
 %}
 
 

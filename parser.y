@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <stack>
-NBlock *programBlock; /* the top level root node of our final AST */
+NBlock *programBlock = new NBlock(); /* the top level root node of our final AST */
 
 //	extern int yylex();
 //	void yyerror(const char *s) { std::printf("Error: %s\n", s);std::exit(1); }
@@ -14,6 +14,7 @@ extern "C" FILE *yyin;
 extern "C" std::stack<bool> yyIndentSensitiveStack;
 
 void yyerror(const char *s);
+extern void onMainStatement();
 
 %}
 
@@ -79,21 +80,23 @@ typedef struct YYLTYPE
 /* Operator precedence for mathematical operators */
 
 %nonassoc IMPLICIT_CALL
-%nonassoc TCOMMA
 
-%left TMUL TDIV
+%left TCOMMA
+%left CALL_ARGS
+%left EXPR_EXPL
 %left TPLUS TMINUS
+%left TMUL TDIV
 
 
 %start program
 
 %%
 
-program         : program_stmts { programBlock = $1; }
+program         : program_stmts { fprintf(stderr, "--------------- creating program block ----------------"); }
                 ;
 
-program_stmts   : program_stmt { $$ = new NBlock(); $$->statements.push_back($<stmt>1); }
-                | program_stmts program_stmt { $1->statements.push_back($<stmt>2); }
+program_stmts   : program_stmt { programBlock->statements.push_back($<stmt>1); onMainStatement(); }
+                | program_stmts program_stmt { programBlock->statements.push_back($<stmt>2); onMainStatement(); }
                 ;
 
 block_stmts     : stmt { $$ = new NBlock(); $$->statements.push_back($<stmt>1); }
@@ -114,7 +117,7 @@ numeric         : TINTEGER { $$ = new NInteger(atol($1->c_str())); delete $1; }
                 | TDOUBLE { $$ = new NDouble(atof($1->c_str())); delete $1; }
                 ;
 
-expr			: expr_expl { $$ = $1; }
+expr			: expr_expl %prec EXPR_EXPL { $$ = $1; }
                 | expr TMUL expr { $$ = new NBinaryOperator(*$1, $2, *$3); }
                 | expr TDIV expr { $$ = new NBinaryOperator(*$1, $2, *$3); }
                 | expr TPLUS expr { $$ = new NBinaryOperator(*$1, $2, *$3); }
@@ -123,7 +126,7 @@ expr			: expr_expl { $$ = $1; }
                 ;
 
 expr_expl       : TLPAREN expr TRPAREN { $$ = $2; }
-                | ident { $<ident>$ = $1; /* WARNING: var or implicit function call without args */ }
+                | ident { $$ = new NMethodCall(*$1); /* WARNING: var or implicit function call without args */ }
                 | numeric { $$ = $1; }
                 | expr_expl TMUL expr_expl { $$ = new NBinaryOperator(*$1, $2, *$3); }
                 | expr_expl TDIV expr_expl { $$ = new NBinaryOperator(*$1, $2, *$3); }
@@ -143,7 +146,7 @@ func_call_args  : expr { $$ = new ExpressionList(); $$->push_back($1); }
                 | func_call_args TCOMMA expr { $1->push_back($3); }
                 ;
 
-func_call_args_expl     : expr_expl { $$ = new ExpressionList(); $$->push_back($1); }
+func_call_args_expl     : expr_expl %prec CALL_ARGS { $$ = new ExpressionList(); $$->push_back($1); }
                         | func_call_args_expl TCOMMA expr_expl { $1->push_back($3); }
                         ;
 
@@ -165,7 +168,7 @@ block           : tlbrace block_stmts TRBRACE { $$ = $2; }
 tlbrace         : TLBRACE { yyIndentSensitiveStack.push(false); fprintf(stderr, "Indent sensitive OFF\n"); }
                 ;
 
-func_decl       : typename ident TLPAREN func_decl_args TRPAREN block { $$ = new NFunctionDeclaration(*$1, *$2, *$4, *$6); delete $4; }
+func_decl       : typename ident TOK_NO_SPACE TLPAREN func_decl_args TRPAREN block { $$ = new NFunctionDeclaration(*$1, *$2, *$5, *$7); delete $5; }
                 ;
 
 func_decl_args  : /*blank*/  { $$ = new VariableList(); yyIndentSensitiveStack.push(true); fprintf(stderr, "Indent sensitive ON\n"); }
