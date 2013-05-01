@@ -18,3 +18,5 @@ parser.ps
 EditLineReader.o
 complete.o
 lexer.hpp
+sugari
+sugari.o

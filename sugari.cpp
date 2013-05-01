@@ -8,9 +8,8 @@
 
 
 //Unusual, but it's the cleanest way
-#include "lexer.cpp"
-
 #define READLINE 1
+#include "lexer.cpp"
 
 #if defined(LIBEDIT)
 /* Support for the BSD libedit with history for
