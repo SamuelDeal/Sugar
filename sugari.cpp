@@ -8,7 +8,7 @@
 
 
 //Unusual, but it's the cleanest way
-#define READLINE 1
+//#define READLINE 0
 #include "lexer.cpp"
 
 #if defined(LIBEDIT)
@@ -154,7 +154,7 @@ static void rl_input (char *buf, int  *result, int   max)
         rl_len = strlen (rl_line)+1;
         if (rl_len != 1)
             add_history (rl_line);
-        rl_line[rl_len-1] = ';';
+        rl_line[rl_len-1] = '\n';
         fflush (stdout);
     }
 
@@ -184,22 +184,34 @@ static void rl_input (char *buf, int  *result, int   max)
 
 
 
-extern NBlock* programBlock;
+NBlock* programBlock = new NBlock();
+InteractiveCodeGenContext context(*programBlock);
 
 int main(int argc, char **argv)
 {
-    logFile = fopen("/home/sam/sugar.log", "w+");
+    //logFile = fopen("/home/sam/sugar.log", "w+");
     yydebug = 1;
-    rl_readline_name = "sugari";
+
+    if(argc > 1){
+        yyin = fopen(argv[1],"r");
+    }
+
+    //rl_readline_name = "sugari";
     InitializeNativeTarget();
     yyparse();
 }
 
 
-void onMainStatement(){
+void onMainStatement(NStatement *stmt){
 
-    fprintf(stderr, "************ onMainStatement ***********");
-    CodeGenContext context;
-    context.generateCode(*programBlock);
-    context.runCode();
+    fprintf(stderr, "\n************ onMainStatement ***********\n");
+    if(stmt->isFunctionDeclaration()){
+        programBlock->statements.push_back(stmt);
+    }
+    else{
+        if(stmt->isVarDeclaration()){
+            programBlock->statements.push_back(stmt);
+        }
+        context.runStatement(stmt);
+    }
 }

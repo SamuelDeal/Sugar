@@ -7,7 +7,8 @@ SOURCES += \
     complete.c \
     EditLineReader.cpp \
     sugari.cpp \
-    test.cpp
+    test.cpp \
+    CodeGenerator.cpp
 
 HEADERS += \
     codegen.h \
@@ -16,7 +17,8 @@ HEADERS += \
     functionimpl.h \
     complete.h \
     EditLineReader.h \
-    LineReader.h
+    LineReader.h \
+    CodeGenerator.h
 
 OTHER_FILES += \
     parser.y \

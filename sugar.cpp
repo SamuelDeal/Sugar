@@ -11,7 +11,7 @@
 using namespace std;
 
 //extern int yyparse();
-extern NBlock* programBlock;
+NBlock* programBlock = new NBlock();
 
 int main(int argc, char **argv)
 {
@@ -31,7 +31,10 @@ int main(int argc, char **argv)
         return 0;
 }
 
-void onMainStatement(){
+void onMainStatement(NStatement *stmt){
+    programBlock->statements.push_back(stmt);
 }
+
+
 
 

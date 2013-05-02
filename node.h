@@ -25,6 +25,9 @@ class NExpression : public Node {
 };
 
 class NStatement : public Node {
+public:
+    virtual bool isVarDeclaration(){ return false; }
+    virtual bool isFunctionDeclaration(){ return false; }
 };
 
 class NInteger : public NExpression {
@@ -112,6 +115,7 @@ public:
         NVariableDeclaration(const NIdentifier& type, NIdentifier& id, NExpression *assignmentExpr) :
                 type(type), id(id), assignmentExpr(assignmentExpr) { }
         virtual llvm::Value* codeGen(CodeGenContext& context);
+        virtual bool isVarDeclaration(){ return true; }
 };
 
 class NFunctionDeclaration : public NStatement {
@@ -124,6 +128,7 @@ public:
                         const VariableList& arguments, NBlock& block) :
                 type(type), id(id), arguments(arguments), block(block) { }
         virtual llvm::Value* codeGen(CodeGenContext& context);
+        bool isFunctionDeclaration(){ return true; }
 };
 
 #endif // NODE_H

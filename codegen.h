@@ -24,6 +24,7 @@
 using namespace llvm;
 
 class NBlock;
+class NStatement;
 
 class CodeGenBlock {
 public:
@@ -32,19 +33,40 @@ public:
 };
 
 class CodeGenContext {
+protected:
     std::stack<CodeGenBlock *> blocks;
     Function *mainFunction;
+    std::map<std::string, Value*> _globals;
 
 public:
     Module *module;
-    CodeGenContext() { module = new Module("main", getGlobalContext()); }
+    CodeGenContext() { module = new Module("main", getGlobalContext());}
 
     void generateCode(NBlock& root);
     GenericValue runCode();
     std::map<std::string, Value*>& locals() { return blocks.top()->locals; }
-    BasicBlock *currentBlock() { return blocks.top()->block; }
+    std::map<std::string, Value*>& globals() { return _globals; }
+    virtual BasicBlock *currentBlock() { return blocks.top()->block; }
+    //BasicBlock *currentBlock() { return (currentBlockOverride == NULL ? (blocks.top()->block) : currentBlockOverride); }
     void pushBlock(BasicBlock *block) { blocks.push(new CodeGenBlock()); blocks.top()->block = block; }
     void popBlock() { CodeGenBlock *top = blocks.top(); blocks.pop(); delete top; }
+    virtual bool isGlobalContext() { return false;  }
+};
+
+class InteractiveCodeGenContext : public CodeGenContext {
+    BasicBlock *currentBlockOverride;
+    ExecutionEngine *ee;
+    int stmtIndex;
+    NBlock& root;
+
+public:
+    InteractiveCodeGenContext(NBlock &block): root(block) { ee = NULL; currentBlockOverride = NULL; stmtIndex = 0; }
+
+    void runStatement(NStatement *stmt);
+    std::map<std::string, Value*>& locals() { return blocks.top()->locals; }
+    //BasicBlock *currentBlock() { return blocks.top()->block; }
+    virtual BasicBlock *currentBlock() { return (currentBlockOverride == NULL ? (blocks.empty() ? NULL : blocks.top()->block) : currentBlockOverride); }
+    virtual bool isGlobalContext() { return blocks.empty();  }
 };
 
 

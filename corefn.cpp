@@ -30,7 +30,7 @@ llvm::Function* createPrintfFunction(CodeGenContext& context)
 void createEchoIntFunction(CodeGenContext& context, llvm::Function* printfFn)
 {
     std::vector<llvm::Type*> echo_arg_types;
-    echo_arg_types.push_back(llvm::Type::getInt64Ty(getGlobalContext()));
+    echo_arg_types.push_back(llvm::Type::getInt32Ty(getGlobalContext()));
 
     llvm::FunctionType* echo_type =
         llvm::FunctionType::get(
@@ -44,7 +44,7 @@ void createEchoIntFunction(CodeGenContext& context, llvm::Function* printfFn)
     llvm::BasicBlock *bblock = llvm::BasicBlock::Create(getGlobalContext(), "entry", func, 0);
         context.pushBlock(bblock);
 
-    const char *constValue = "%d\n";
+    const char *constValue = "%x\n";
     llvm::Constant *format_const = llvm::ConstantDataArray::getString(getGlobalContext(), constValue);
     llvm::GlobalVariable *var =
         new llvm::GlobalVariable(
@@ -72,7 +72,7 @@ void createEchoIntFunction(CodeGenContext& context, llvm::Function* printfFn)
     context.popBlock();
 
     std::list<llvm::Type *> types;
-    types.push_back(llvm::Type::getInt64Ty(getGlobalContext()));
+    types.push_back(llvm::Type::getInt32Ty(getGlobalContext()));
     core::functionList.addFunction("echo", func, types);
 }
 
@@ -113,7 +113,7 @@ void createEchoDoubleFunction(CodeGenContext& context, llvm::Function* printfFn)
 
     Function::arg_iterator argsValues = func->arg_begin();
     Value* toPrint = argsValues++;
-    toPrint->setName("toPrint2");
+    toPrint->setName("toPrint");
     args.push_back(toPrint);
 
     CallInst *call = CallInst::Create(printfFn, makeArrayRef(args), "", bblock);

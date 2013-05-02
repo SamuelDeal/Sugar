@@ -38,26 +38,35 @@ struct ContextIndentInfo {
 };
 ContextIndentInfo g_indent_context;
 unsigned int g_indent_count = 0;
-bool g_indent_line_emitted = false;
 
 extern const char* g_current_filename;
 bool yySkipNL = true;
 std::stack<bool> yyIndentSensitiveStack;
 std::queue<int> yyTokenQueue;
+std::queue<std::string *> yyIdQueue;
 bool yySeachLParent = false;
-
-bool yyIndentSensitive(){
-    return yyIndentSensitiveStack.empty() ? false : yyIndentSensitiveStack.top();
-}
 
 void yyQueueTokens(int count, ...){
     va_list ap;
     va_start(ap, count);
     for (int i = 0; i < count; i++){
         yyTokenQueue.push(va_arg(ap, int));
+        yyIdQueue.push(NULL);
     }
     va_end(ap);
 }
+
+void yyQueueToken(int token){
+    yyTokenQueue.push(token);
+    yyIdQueue.push(NULL);
+}
+
+void yyQueueTokenId(int token, std::string *id) {
+    yyTokenQueue.push(token);
+    yyIdQueue.push(id);
+}
+
+void yyIndentCheck();
 
 /* Don't mangle yylex please! */
 #define YY_DECL extern "C" int yylex()
@@ -68,7 +77,8 @@ void yyQueueTokens(int count, ...){
         g_indent_context.style = ContextIndentInfo::UNDEFINED; \
         /*yylloc.first_line = 1;*/ \
         /*yylloc.first_column = 1;*/ \
-        BEGIN(initial); \
+        fprintf(stderr, "\nEntering Indent state\n"); \
+        BEGIN(yy_state_indent); \
     }
 
 int yycolumn = 1;
@@ -98,9 +108,38 @@ void lyyerror(const char *s){
 
 extern FILE * yyin;
 
+//#define VA_NARGS_IMPL(_1, _2, _3, _4, _5, N, ...) N
+//#define VA_NARGS(...) VA_NARGS_IMPL(__VA_ARGS__, 5, 4, 3, 2, 1)
 #define VA_NARGS_IMPL(_1, _2, _3, _4, _5, N, ...) N
-#define VA_NARGS(...) VA_NARGS_IMPL(__VA_ARGS__, 5, 4, 3, 2, 1)
-#define yyReturn(token, ...) yyQueueTokens(VA_NARGS(__VA_ARGS__), __VA_ARGS__); return TOKEN(token);
+#define VA_NARGS(...) VA_NARGS_IMPL(X,##__VA_ARGS__, 4, 3, 2, 1, 0)
+
+#define yyPopQueue() \
+    if(!yyTokenQueue.empty()){ \
+        int result = yyTokenQueue.front(); \
+        std::string *id = yyIdQueue.front(); \
+        yyTokenQueue.pop(); \
+        yyIdQueue.pop(); \
+        if(EOF == result){ \
+            yyterminate(); \
+        } \
+        else if(id == NULL){ \
+            yylval.token = result; \
+            return result; \
+        } \
+        else{ \
+            yylval.string = id;\
+            return result; \
+        } \
+    }
+
+#define yyReturn(...) \
+        yyQueueTokens(VA_NARGS(__VA_ARGS__), ##__VA_ARGS__); \
+        yyPopQueue();
+
+#define yyReturnId(t) \
+        yyQueueTokenId(t, new std::string(yytext, yyleng)); \
+        yyPopQueue();
+
 
 #if defined(LIBEDIT)
 
@@ -124,9 +163,7 @@ static void rl_input (char *buf, int  *result, int   max);
 
 
  /* This is a sub-parser (state) for indentation-sensitive scoping */
-%x initial
-%x indent
-%s normal
+%s yy_state_indent
 
  /* %option 8bit reentrant bison-bridge */
 %option warn
@@ -134,129 +171,19 @@ static void rl_input (char *buf, int  *result, int   max);
 %option yylineno
 %option noyywrap
 
+%option debug
+
 
  /*%option debug*/
 %%
-    int indent_caller = normal;
-    if(!yyTokenQueue.empty()){
-        int result = yyTokenQueue.front();
-        yyTokenQueue.pop();
-        if(EOF == result){
-            yyterminate();
-        }
-        else{
-            return TOKEN(result);
-        }
-    }
+    yyReturn();
 
- /* This helps to keep track of the column number.
-  * Note that it won't work if you have a rule which includes a newline and is
-  * longer than one character because in that case that rule will be favored
-  * and this one here won't get called.
-  * TL;DR: If you have a rule which includes \n and more, you need to reset
-  *        yycolumn inside that rule!
-  */
-<*>\n {
-    yySeachLParent = false;
-    set_yycolumn(0);
-    yylineno--; REJECT;
-}
-
- /* Everything runs in the <normal> mode and enters the <indent> mode
-    when a newline symbol is encountered.
-    There is no newline symbol before the first line, so we need to go
-    into the <indent> mode by hand there.
- */
-<initial>.  {
-    yySeachLParent = false;
-    set_yycolumn(yycolumn-1);
-    indent_caller = normal;
-    yyless(0);
-    BEGIN(yyIndentSensitive() ? indent : normal);
-}
-<initial>\n {
-    yySeachLParent = false;
-    indent_caller = normal;
-    yyless(0);
-    BEGIN(yyIndentSensitive() ? indent : normal);
-}
-
-
-<normal>[\r\n]+                 {
+<yy_state_indent>[ \t]*\r\n|[ \t]*\r|[ \t]*\n   { /* ignoring blank line */
     yySeachLParent = false;
     g_indent_count = 0;
-    g_indent_line_emitted = false;
-    indent_caller = YY_START;
-    BEGIN(yyIndentSensitive() ? indent : normal);
-    if(!yySkipNL){
-        yySkipNL = true;
-        return TOK_NL;
-    }
 }
-<normal>[ \t]                       { yySeachLParent = false; };
-<normal>"return"                    { yySkipNL = false; yySeachLParent = false; return TOKEN(TRETURN); }
-<normal>[A-Z][a-zA-Z0-9_\?]*        { yySkipNL = false; yySeachLParent = false; SAVE_TOKEN; return TTYPENAME; }
-<normal>[a-z_][a-zA-Z0-9_\?!]*      { yySkipNL = false; yySeachLParent = true; SAVE_TOKEN; return TIDENTIFIER; }
-<normal>[0-9]+\.[0-9]*              { yySkipNL = false; yySeachLParent = false; SAVE_TOKEN; return TDOUBLE; }
-<normal>[0-9]+                      { yySkipNL = false; yySeachLParent = false; SAVE_TOKEN; return TINTEGER; }
-<normal>"="                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TEQUAL); }
-<normal>"=="                        { yySkipNL = true; yySeachLParent = false; return TOKEN(TCEQ); }
-<normal>"!="                        { yySkipNL = true; yySeachLParent = false; return TOKEN(TCNE); }
-<normal>"<"                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TCLT); }
-<normal>"<="                        { yySkipNL = true; yySeachLParent = false; return TOKEN(TCLE); }
-<normal>">"                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TCGT); }
-<normal>">="                        { yySkipNL = true; yySeachLParent = false; return TOKEN(TCGE); }
-<normal>"("                         {
-    yySkipNL = true;
-    bool searchLParent = yySeachLParent;
-    yySeachLParent = false;
-    if(searchLParent){
-        yyReturn(TOK_NO_SPACE, TLPAREN);
-    }
-    else{
-        return TOKEN(TLPAREN);
-    }
-}
-<normal>")"                         { yySkipNL = false; yySeachLParent = false; return TOKEN(TRPAREN); }
-<normal>"{"                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TLBRACE); }
-<normal>"}"                         {
-    yySeachLParent = false;
-    if(!yySkipNL){
-        yyReturn(TOK_IMPLICIT_END_INSTR, TRBRACE);
-    }
-    else{
-        yySkipNL = false;
-        return TOKEN(TRBRACE);
-    }
-}
-<normal>"."                         { yySkipNL = false; yySeachLParent = false; return TOKEN(TDOT); }
-<normal>","                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TCOMMA); }
-<normal>"+"                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TPLUS); }
-<normal>"-"                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TMINUS); }
-<normal>"*"                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TMUL); }
-<normal>"/"                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TDIV); }
-<normal>";"                         { yySkipNL = true; yySeachLParent = false; return TOKEN(TSEMICOL); }
-<normal><<EOF>>                     {
-    yySeachLParent = false;
-    if(!yySkipNL){
-        yySkipNL = true;
-        yyReturn(TOK_IMPLICIT_END_INSTR, EOF);
-    }
-    else{
-        yyterminate();
-    }
-}
-<normal>.                           printf("Unknown token!\n"); yyterminate();
 
-
-
- /* The following are the rules that keep track of indentation. */
-<indent>[ \t]*\n                    {
-    yySeachLParent = false;
-    g_indent_count = 0;
-    g_indent_line_emitted = false; /* ignoring blank line */
-}
-<indent>" "+                        {
+<yy_state_indent>" "+            {
     yySeachLParent = false;
     if(g_indent_context.style == ContextIndentInfo::UNDEFINED){
         g_indent_context.style = ContextIndentInfo::SPACE;
@@ -280,7 +207,8 @@ static void rl_input (char *buf, int  *result, int   max);
     }
     g_indent_count += yyleng / g_indent_context.spaceSize;
 }
-<indent>\t      {
+
+<yy_state_indent>\t+             {
     yySeachLParent = false;
     if(g_indent_context.style == ContextIndentInfo::UNDEFINED){
             g_indent_context.style = ContextIndentInfo::TAB;
@@ -294,47 +222,108 @@ static void rl_input (char *buf, int  *result, int   max);
 #endif
     }
 #endif
-    ++g_indent_count;
-}
-<indent><<EOF>>                             {
-    yySeachLParent = false;
-    // When encountering the end of file, we want to emit an
-    // outdent for all indents currently left.
-    for(int i = 0; i < g_indent_context.indentCount; i++){
-        yyTokenQueue.push(TOK_OUTDENT);
-        yyTokenQueue.push(TOK_IMPLICIT_END_INSTR);
-    }
-    yyTokenQueue.push(EOF);
+    g_indent_count += yyleng;
 }
 
-<indent>.                                   {
+\r\n|\r|\n                  {
     yySeachLParent = false;
-    set_yycolumn(yycolumn-1);
-    if(g_indent_count == g_indent_context.indentCount) {
-        yyless(0);
-        BEGIN(indent_caller);
+    g_indent_count = 0;
+    BEGIN(yy_state_indent);
+    fprintf(stderr, "\nEntering Indent state\n");
+    if(!yySkipNL){
+        yySkipNL = true;
+        yyReturn(TOK_NL);
     }
-    else if(g_indent_count < g_indent_context.indentCount){
-        --g_indent_context.indentCount;
-        yyless(0);
-        yyReturn(TOK_OUTDENT, TOK_IMPLICIT_END_INSTR);
+    yyReturn();
+}
+[ \t]                       { yySeachLParent = false; };
+"return"                    { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturn(TRETURN); }
+[A-Z][a-zA-Z0-9_\?]*        { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturnId(TTYPENAME); }
+[a-z_][a-zA-Z0-9_\?!]*      { yySkipNL = false; yySeachLParent = true; yyIndentCheck(); yyReturnId(TIDENTIFIER); }
+[0-9]+\.[0-9]*              { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturnId(TDOUBLE); }
+[0-9]+                      { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturnId(TINTEGER); }
+"="                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TEQUAL); }
+"=="                        { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCEQ); }
+"!="                        { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCNE); }
+"<"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCLT); }
+"<="                        { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCLE); }
+">"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCGT); }
+">="                        { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCGE); }
+"."                         { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturn(TDOT); }
+","                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCOMMA); }
+"+"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TPLUS); }
+"-"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TMINUS); }
+"*"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TMUL); }
+"/"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TDIV); }
+";"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TSEMICOL); }
+"("                         {
+    yySkipNL = true;
+    bool searchLParent = yySeachLParent;
+    yySeachLParent = false;
+    yyIndentCheck();
+    if(searchLParent){
+        yyReturn(TOK_NO_SPACE, TLPAREN);
     }
-    else if(g_indent_count > g_indent_context.indentCount){
-        yyless(0);
-        if(g_indent_line_emitted) {
-            g_indent_count = g_indent_context.indentCount;
-#if INDENT_FAIL_ON_ERROR
-            lyyerror("indentation increased more than once");
-#else
-            return TOK_BAD_INDENT;
-#endif
-        }
-        else{
-            ++g_indent_context.indentCount;
-            g_indent_line_emitted = true;
-            return TOK_INDENT;
-        }
+    else{
+        yyReturn(TLPAREN);
     }
 }
+")"                         { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturn(TRPAREN); }
+"{"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TLBRACE); }
+"}"                         {
+    yySeachLParent = false;
+    yyIndentCheck();
+    if(!yySkipNL){
+        yyReturn(TOK_IMPLICIT_END_INSTR, TRBRACE);
+    }
+    else{
+        yySkipNL = false;
+        yyReturn(TRBRACE);
+    }
+}
+
+<*><<EOF>>                  {
+    if(!yySkipNL){
+        yyQueueToken(TOK_IMPLICIT_END_INSTR);
+    }
+    while(g_indent_context.indentCount > 0){
+        --g_indent_context.indentCount;
+        yyQueueToken(TOK_OUTDENT);
+        yyQueueToken(TOK_IMPLICIT_END_INSTR);
+    }
+    yyReturn(EOF);
+}
+.                           {   printf("Unknown token!\n"); yyterminate();  }
 
 %%
+
+void yyIndentCheck(){
+    if(YY_START != yy_state_indent){
+        return;
+    }
+    fprintf(stderr, "\nLeaving Indent state\n");
+    BEGIN(INITIAL);
+    if(yyIndentSensitiveStack.empty() || !yyIndentSensitiveStack.top()){
+        return;
+    }
+    while(g_indent_count < g_indent_context.indentCount){
+        --g_indent_context.indentCount;
+        yyQueueToken(TOK_OUTDENT);
+        yyQueueToken(TOK_IMPLICIT_END_INSTR);
+    }
+    if(g_indent_count > g_indent_context.indentCount){
+        yyQueueToken(TOK_INDENT);
+        ++g_indent_context.indentCount;
+#if INDENT_FAIL_ON_ERROR
+        if(g_indent_count > g_indent_context.indentCount){
+            lyyerror("indentation increased more than once");
+        }
+#else
+        while(g_indent_count > g_indent_context.indentCount){
+            ++g_indent_context.indentCount;
+            yyQueueToken(TOK_BAD_INDENT);
+        }
+#endif
+    }
+
+}

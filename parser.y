@@ -4,7 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <stack>
-NBlock *programBlock = new NBlock(); /* the top level root node of our final AST */
+extern NBlock *programBlock; /* the top level root node of our final AST */
 
 //	extern int yylex();
 //	void yyerror(const char *s) { std::printf("Error: %s\n", s);std::exit(1); }
@@ -14,7 +14,7 @@ extern "C" FILE *yyin;
 extern "C" std::stack<bool> yyIndentSensitiveStack;
 
 void yyerror(const char *s);
-extern void onMainStatement();
+extern void onMainStatement(NStatement *);
 
 %}
 
@@ -92,11 +92,11 @@ typedef struct YYLTYPE
 
 %%
 
-program         : program_stmts { fprintf(stderr, "--------------- creating program block ----------------"); }
+program         : program_stmts { }
                 ;
 
-program_stmts   : program_stmt { programBlock->statements.push_back($<stmt>1); onMainStatement(); }
-                | program_stmts program_stmt { programBlock->statements.push_back($<stmt>2); onMainStatement(); }
+program_stmts   : program_stmt { onMainStatement($<stmt>1); }
+                | program_stmts program_stmt { onMainStatement($<stmt>2); }
                 ;
 
 block_stmts     : stmt { $$ = new NBlock(); $$->statements.push_back($<stmt>1); }
