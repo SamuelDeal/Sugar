@@ -1,10 +1,10 @@
+#include <sstream>
+
 #include "node.h"
 #include "codegen.h"
 #include "parser.hpp"
 #include "functionlist.h"
-
-#include <sstream>
-#include <llvm/ExecutionEngine/Interpreter.h>
+#include "config.h"
 
 using namespace std;
 
@@ -25,11 +25,12 @@ std::string to_string(int i){
 #endif
 
 /* Compile the AST into a module */
-void CodeGenContext::generateCode(NBlock& root)
-{
+void CodeGenContext::generateCode(NBlock& root) {
+#if DEBUG_GENERATOR
         std::cout << "Generating code...\n";
+#endif
 
-        /* Create the top level interpreter function to call as entry */
+        // Create the top level interpreter function to call as entry
         vector<Type*> argTypes;
         FunctionType *ftype = FunctionType::get(Type::getVoidTy(getGlobalContext()), makeArrayRef(argTypes), false);
         mainFunction = Function::Create(ftype, GlobalValue::InternalLinkage, "main", module);
@@ -43,50 +44,46 @@ void CodeGenContext::generateCode(NBlock& root)
         ReturnInst::Create(getGlobalContext(), bblock);
         popBlock();
 
-        /* Print the bytecode in a human-readable format
-           to see if our program compiled properly
-         */
+
+#if DEBUG_GENERATOR
         std::cout << "Code is generated.\n";
+#endif
+#if DEBUG_IR
+        // Print the bytecode in a human-readable format
+        //   to see if our program compiled properly
         PassManager pm;
         pm.add(createPrintModulePass(&outs()));
         pm.run(*module);
+#endif
 }
 
-/* Executes the AST by running the main function */
+// Executes the AST by running the main function
 GenericValue CodeGenContext::runCode() {
+#if DEBUG_GENERATOR
         std::cout << "\n =========== Running code... ============= \n";
+#endif
         ExecutionEngine *ee = EngineBuilder(module).create();
         vector<GenericValue> noargs;
         GenericValue v = ee->runFunction(mainFunction, noargs);
+#if DEBUG_GENERATOR
         std::cout << "\n =========== Code was run. ==============\n";
+#endif
         return v;
 }
 
-/* Executes the AST by running the main function */
-void InteractiveCodeGenContext::runStatement(NStatement *stmt) {
+// Executes the AST by running the main function
+GenericValue InteractiveCodeGenContext::runStatement(NStatement *stmt) {
     static int count = 0;
     ++count;
 
-    static std::list<Function *>functions;
-
+#if DEBUG_GENERATOR
     std::cout << "Generating code...\n";
+#endif
     vector<Type*> argTypes;
     FunctionType *ftype = FunctionType::get(Type::getVoidTy(getGlobalContext()), makeArrayRef(argTypes), false);
     if(ee == NULL){
-        /* Create the top level interpreter function to call as entry */
-
-
-        //mainFunction = Function::Create(ftype, GlobalValue::InternalLinkage, "main", module);
-        //BasicBlock *bblock = BasicBlock::Create(getGlobalContext(), "entry", mainFunction, 0);
-
         createCoreFunctions(*this);
-
-        /* Push a new variable/block context */
-        //pushBlock(bblock);
-        //root.codeGen(*this); /* emit bytecode for the toplevel block */
-        //ReturnInst::Create(getGlobalContext(), bblock);
-
-        ee = EngineBuilder(module).setEngineKind(EngineKind::Interpreter).create();
+        ee = EngineBuilder(module).create();
     }
 
     while(stmtIndex < root.statements.size()){
@@ -97,45 +94,37 @@ void InteractiveCodeGenContext::runStatement(NStatement *stmt) {
     Function *runFunction = Function::Create(ftype, GlobalValue::InternalLinkage, "__shell_invoke__"+ std::to_string(count), module);
     BasicBlock *runBlock = BasicBlock::Create(getGlobalContext(), "entry", runFunction, 0);
 
-    std::cout << "*** Main block =  " << currentBlock() << " \n";
     currentBlockOverride = runBlock;
-    BasicBlock *after = currentBlock();
-    if(runBlock == after){
-        std::cout << "*** Run block =  " << runBlock << " \n";
-    }
-    std::cout << "*** Run block =  " << runBlock << " \n";
     stmt->codeGen(*this);
-    std::cout << "*** Run block =  " << runBlock << " \n";
     ReturnInst::Create(getGlobalContext(), runBlock);
-    std::cout << "*** Run block =  " << runBlock << " \n";
     currentBlockOverride = NULL;
-    functions.push_back(runFunction);
-    std::cout << "*** Run block =  " << runBlock << " \n";
 
-
-    //popBlock();
-
-    /* Print the bytecode in a human-readable format
-       to see if our program compiled properly
-     */
+#if DEBUG_GENERATOR
     std::cout << "Code is generated.\n";
+#endif
+#if DEBUG_IR
+    // Print the bytecode in a human-readable format
+    //   to see if our program compiled properly
     PassManager pm;
     pm.add(createPrintModulePass(&outs()));
     pm.run(*module);
-
-
-    std::cout << "\n ======================== Running code...\n";
-
+#endif
+#if DEBUG_GENERATOR
+        std::cout << "\n =========== Running code... ============= \n";
+#endif
     vector<GenericValue> noargs;
     GenericValue v = ee->runFunction(runFunction, noargs);
-    //return v;
+#if DEBUG_GENERATOR
+        std::cout << "\n =========== Code was run. ==============\n";
+#endif
+    return v;
 }
 
 /* Returns an LLVM type based on the identifier */
 static Type *typeOf(const NIdentifier& type)
 {
         if (type.name.compare("Int") == 0) {
-                return Type::getInt32Ty(getGlobalContext());
+                return Type::getInt64Ty(getGlobalContext());
         }
         else if (type.name.compare("Float") == 0) {
                 return Type::getDoubleTy(getGlobalContext());
@@ -147,7 +136,7 @@ static Type *typeOf(const NIdentifier& type)
 static Constant *defaultValueOf(const NIdentifier& type)
 {
         if (type.name.compare("Int") == 0) {
-                return ConstantInt::get(Type::getInt32Ty(getGlobalContext()), 0, true);
+                return ConstantInt::get(Type::getInt64Ty(getGlobalContext()), 0, true);
         }
         else if (type.name.compare("Float") == 0) {
                 return ConstantFP::get(Type::getDoubleTy(getGlobalContext()), 0);
@@ -158,21 +147,26 @@ static Constant *defaultValueOf(const NIdentifier& type)
 
 /* -- Code Generation -- */
 
-Value* NInteger::codeGen(CodeGenContext& context)
-{
+Value* NInteger::codeGen(CodeGenContext& context) {
+#if DEBUG_GENERATOR
         std::cout << "Creating integer: " << value << endl;
-        return ConstantInt::get(Type::getInt32Ty(getGlobalContext()), value, true);
+#endif
+        return ConstantInt::get(Type::getInt64Ty(getGlobalContext()), value, true);
 }
 
 Value* NDouble::codeGen(CodeGenContext& context)
 {
+#if DEBUG_GENERATOR
         std::cout << "Creating double: " << value << endl;
+#endif
         return ConstantFP::get(Type::getDoubleTy(getGlobalContext()), value);
 }
 
 Value* NIdentifier::codeGen(CodeGenContext& context)
 {
+#if DEBUG_GENERATOR
         std::cout << "Creating identifier reference: " << name << endl;
+#endif
         if (context.locals().find(name) == context.locals().end() && context.globals().find(name) == context.globals().end()) {
                 std::cerr << "undeclared variable " << name << endl;
                 return NULL;
@@ -182,7 +176,9 @@ Value* NIdentifier::codeGen(CodeGenContext& context)
 
 Value* NMethodCall::codeGen(CodeGenContext& context)
 {
+#if DEBUG_GENERATOR
         std::cout << "\n*** Method call generation " << id.name << " \n";
+#endif
         std::vector<Value*> args;
         ExpressionList::const_iterator it;
         for (it = arguments.begin(); it != arguments.end(); it++) {
@@ -192,28 +188,31 @@ Value* NMethodCall::codeGen(CodeGenContext& context)
         std::list<Type *> types;
         for(std::vector<Value *>::const_iterator i = args.begin(); i != args.end(); i++){
             types.push_back((*i)->getType());
-            std::cout << "    " << (*i)->getType()->getTypeID() << " \n";
         }
         Function *function = core::functionList.getFunction(id.name, types);
 
         if (function == NULL) {
             Value *result = NULL;
             if (!context.isGlobalContext() && context.locals().find(id.name) != context.locals().end()) {
-                return new LoadInst(context.locals()[id.name], "", false, context.currentBlock());
+                result = new LoadInst(context.locals()[id.name], "", false, context.currentBlock());
             }
             else if(context.globals().find(id.name) != context.globals().end()){
-                return new LoadInst(context.globals()[id.name], "", false, context.currentBlock());
+                result = new LoadInst(context.globals()[id.name], "", false, context.currentBlock());
                 //return context.globals()[id.name];
             }
             else {
                 std::cerr << "No variable not function with that name variable " << id.name << endl;
-                return NULL;
             }
-
+#if DEBUG_GENERATOR
+            std::cout << "Creating ariable reference: " << id.name << endl;
+#endif
+            return result;
         }
 
         CallInst *call = CallInst::Create(function, makeArrayRef(args), "", context.currentBlock());
+#if DEBUG_GENERATOR
         std::cout << "Creating method call: " << id.name << endl;
+#endif
         return call;
 }
 
@@ -221,15 +220,19 @@ Value* NBinaryOperator::codeGen(CodeGenContext& context)
 {
         Value* lValue = lhs.codeGen(context);
         Value* rValue = rhs.codeGen(context);
+#if DEBUG_GENERATOR
         std::cout << "Creating binary operation " << op << endl;
-        if(lValue->getType() == Type::getInt32Ty(getGlobalContext()) && rValue->getType() == Type::getInt32Ty(getGlobalContext())){
+#endif
+        if(lValue->getType() == Type::getInt64Ty(getGlobalContext()) && rValue->getType() == Type::getInt64Ty(getGlobalContext())){
             switch (op) {
                     case TPLUS: 	return BinaryOperator::Create(Instruction::Add, lValue, rValue, "", context.currentBlock());
                     case TMINUS: 	return BinaryOperator::Create(Instruction::Sub, lValue, rValue, "", context.currentBlock());
                     case TMUL: 		return BinaryOperator::Create(Instruction::Mul, lValue, rValue, "", context.currentBlock());
                     case TDIV: 		return BinaryOperator::Create(Instruction::SDiv, lValue, rValue, "", context.currentBlock());
             }
+#if DEBUG_GENERATOR
             std::cerr << "unknown operand: " << op << std::endl;
+#endif
         }
         else if(lValue->getType() == Type::getDoubleTy(getGlobalContext()) && rValue->getType() == Type::getDoubleTy(getGlobalContext())){
             switch (op) {
@@ -250,7 +253,9 @@ Value* NBinaryOperator::generate(Instruction::BinaryOps ops, CodeGenContext& con
 
 Value* NAssignment::codeGen(CodeGenContext& context)
 {
+#if DEBUG_GENERATOR
         std::cout << "Creating assignment for " << lhs.name << endl;
+#endif
         Value *toAssign = NULL;
         if (!context.isGlobalContext() && context.locals().find(lhs.name) != context.locals().end()) {
             toAssign = context.locals()[lhs.name];
@@ -271,22 +276,30 @@ Value* NBlock::codeGen(CodeGenContext& context)
         StatementList::const_iterator it;
         Value *last = NULL;
         for (it = statements.begin(); it != statements.end(); it++) {
+#if DEBUG_GENERATOR
                 std::cout << "Generating code for " << typeid(**it).name() << endl;
+#endif
                 last = (**it).codeGen(context);
         }
+#if DEBUG_GENERATOR
         std::cout << "Creating block" << endl;
+#endif
         return last;
 }
 
 Value* NExpressionStatement::codeGen(CodeGenContext& context)
 {
+#if DEBUG_GENERATOR
         std::cout << "Generating code for " << typeid(expression).name() << endl;
+#endif
         return expression.codeGen(context);
 }
 
 Value* NReturnStatement::codeGen(CodeGenContext &context)
 {
+#if DEBUG_GENERATOR
         std::cout << "Generating return value: " << typeid(expression).name() << endl;
+#endif
         returnValue = expression.codeGen(context);
         return returnValue;
 }
@@ -295,7 +308,9 @@ Value* NVariableDeclaration::codeGen(CodeGenContext& context)
 {
         BasicBlock *currentBlock = context.currentBlock();
         if(currentBlock == NULL){ //global variable
+#if DEBUG_GENERATOR
             std::cout << "Creating global variable declaration " << type.name << " " << id.name << endl;
+#endif
             GlobalVariable *var = new GlobalVariable(*context.module, typeOf(type), false, GlobalValue::InternalLinkage, 0, id.name);
             var->setInitializer(defaultValueOf(type));
             context.globals()[id.name] = var;
@@ -304,14 +319,18 @@ Value* NVariableDeclaration::codeGen(CodeGenContext& context)
         }
         else if(context.isGlobalContext()){ //use global context
             if (assignmentExpr != NULL) {
+#if DEBUG_GENERATOR
                 std::cout << "Assigning value to global variable declaration " << type.name << " " << id.name << endl;
+#endif
                 NAssignment assn(id, *assignmentExpr);
                 assn.codeGen(context);
             }
             return context.globals()[id.name];
         }
         else { //local variable declaration
+#if DEBUG_GENERATOR
             std::cout << "Creating global variable declaration " << type.name << " " << id.name << endl;
+#endif
             AllocaInst *alloc = new AllocaInst(typeOf(type), id.name.c_str(), context.currentBlock());
             context.locals()[id.name] = alloc;
             if (assignmentExpr != NULL) {
@@ -324,7 +343,9 @@ Value* NVariableDeclaration::codeGen(CodeGenContext& context)
 
 Value* NFunctionDeclaration::codeGen(CodeGenContext& context)
 {
+#if DEBUG_GENERATOR
     std::cout << "clean previous return value" << std::endl;
+#endif
     returnValue = NULL;
     vector<Type*> argTypes;
         VariableList::const_iterator it;
@@ -357,8 +378,10 @@ Value* NFunctionDeclaration::codeGen(CodeGenContext& context)
         context.popBlock();
         core::functionList.addFunction(id.name, function, types);
         returnValue = NULL;
+#if DEBUG_GENERATOR
         std::cout << "Creating function: " << id.name << endl;
         std::cout << "clean setted return value" << std::endl;
+#endif
         return function;
 }
 

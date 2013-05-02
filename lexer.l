@@ -5,6 +5,7 @@
 #include <queue>
 #include <stdarg.h>
 #include <stack>
+#include "config.h"
 
 #if ! defined YYLTYPE && ! defined YYLTYPE_IS_DECLARED
 #define YYLTYPE YYLTYPE
@@ -23,8 +24,12 @@ typedef struct YYLTYPE
 
 
 /* globals to track current indentation */
+#ifndef INDENT_ALLOW_MIXED
 #define INDENT_ALLOW_MIXED 0
+#endif
+#ifndef INDENT_FAIL_ON_ERROR
 #define INDENT_FAIL_ON_ERROR 0
+#endif
 struct ContextIndentInfo {
     enum EStyle {
         UNDEFINED,
@@ -71,13 +76,19 @@ void yyIndentCheck();
 /* Don't mangle yylex please! */
 #define YY_DECL extern "C" int yylex()
 
+#if defined(DEBUG_LEXER) && DEBUG_LEXER
+#define LOG_LEXER(str, ...) fprintf(stderr, str, ##__VA_ARGS__)
+#else
+#define LOG_LEXER(str, ...)
+#endif
+
 #define YY_USER_INIT { \
         g_indent_context.spaceSize = -1; \
         g_indent_context.indentCount = 0; \
         g_indent_context.style = ContextIndentInfo::UNDEFINED; \
         /*yylloc.first_line = 1;*/ \
         /*yylloc.first_column = 1;*/ \
-        fprintf(stderr, "\nEntering Indent state\n"); \
+        LOG_LEXER("\nEntering Indent state\n"); \
         BEGIN(yy_state_indent); \
     }
 
@@ -102,14 +113,12 @@ void lyyerror(const char *s){
 
 #include "node.h"
 #include "parser.hpp"
-#define SAVE_TOKEN yylval.string = new std::string(yytext, yyleng)
-#define TOKEN(t) (yylval.token = t)
+//#define SAVE_TOKEN yylval.string = new std::string(yytext, yyleng)
+//#define TOKEN(t) (yylval.token = t)
 //extern "C" int yywrap() { }
 
 extern FILE * yyin;
 
-//#define VA_NARGS_IMPL(_1, _2, _3, _4, _5, N, ...) N
-//#define VA_NARGS(...) VA_NARGS_IMPL(__VA_ARGS__, 5, 4, 3, 2, 1)
 #define VA_NARGS_IMPL(_1, _2, _3, _4, _5, N, ...) N
 #define VA_NARGS(...) VA_NARGS_IMPL(X,##__VA_ARGS__, 4, 3, 2, 1, 0)
 
@@ -141,21 +150,13 @@ extern FILE * yyin;
         yyPopQueue();
 
 
-#if defined(LIBEDIT)
+#if INTERACTIVE_INPUT && ((defined(LIBREADLINE) && LIBREADLINE) || (defined(LIBEDIT) && LIBEDIT))
 
 #undef  YY_INPUT
 #define YY_INPUT(buf,result,max_size) \
-    bcel_input((char *)buf, &result, max_size)
+    lexer_input((char *)buf, &result, max_size)
 
-static void bcel_input (char *buf, int  *result, int   max)
-
-#elif defined(READLINE)
-
-#undef  YY_INPUT
-#define YY_INPUT(buf,result,max_size) \
-    rl_input((char *)buf, &result, max_size)
-
-static void rl_input (char *buf, int  *result, int   max);
+static void lexer_input(char *buf, int *result, int max);
 
 #endif
 %}
@@ -170,9 +171,6 @@ static void rl_input (char *buf, int  *result, int   max);
 %option nodefault
 %option yylineno
 %option noyywrap
-
-%option debug
-
 
  /*%option debug*/
 %%
@@ -229,7 +227,7 @@ static void rl_input (char *buf, int  *result, int   max);
     yySeachLParent = false;
     g_indent_count = 0;
     BEGIN(yy_state_indent);
-    fprintf(stderr, "\nEntering Indent state\n");
+    LOG_LEXER("\nEntering Indent state\n");
     if(!yySkipNL){
         yySkipNL = true;
         yyReturn(TOK_NL);
@@ -301,7 +299,7 @@ void yyIndentCheck(){
     if(YY_START != yy_state_indent){
         return;
     }
-    fprintf(stderr, "\nLeaving Indent state\n");
+    LOG_LEXER("\nLeaving Indent state\n");
     BEGIN(INITIAL);
     if(yyIndentSensitiveStack.empty() || !yyIndentSensitiveStack.top()){
         return;

@@ -4,6 +4,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <stack>
+#include "config.h"
+
 extern NBlock *programBlock; /* the top level root node of our final AST */
 
 //	extern int yylex();
@@ -15,6 +17,12 @@ extern "C" std::stack<bool> yyIndentSensitiveStack;
 
 void yyerror(const char *s);
 extern void onMainStatement(NStatement *);
+
+#if defined(DEBUG_LEXER) && DEBUG_LEXER
+#define LOG_LEXER(str, ...) fprintf(stderr, str, ##__VA_ARGS__)
+#else
+#define LOG_LEXER(str, ...)
+#endif
 
 %}
 
@@ -162,18 +170,18 @@ var_decl        : typename ident { $$ = new NVariableDeclaration(*$1, *$2); }
 
 block           : tlbrace block_stmts TRBRACE { $$ = $2; }
                 | tlbrace TRBRACE { $$ = new NBlock(); }
-                | TOK_NL TOK_INDENT block_stmts TOK_OUTDENT { $$ = $3; yyIndentSensitiveStack.pop(); fprintf(stderr, "Indent sensitive OFF\n"); }
+                | TOK_NL TOK_INDENT block_stmts TOK_OUTDENT { $$ = $3; yyIndentSensitiveStack.pop(); LOG_LEXER("Indent sensitive OFF\n"); }
                 ;
 
-tlbrace         : TLBRACE { yyIndentSensitiveStack.push(false); fprintf(stderr, "Indent sensitive OFF\n"); }
+tlbrace         : TLBRACE { yyIndentSensitiveStack.push(false); LOG_LEXER("Indent sensitive OFF\n"); }
                 ;
 
 func_decl       : typename ident TOK_NO_SPACE TLPAREN func_decl_args TRPAREN block { $$ = new NFunctionDeclaration(*$1, *$2, *$5, *$7); delete $5; }
                 ;
 
-func_decl_args  : /*blank*/  { $$ = new VariableList(); yyIndentSensitiveStack.push(true); fprintf(stderr, "Indent sensitive ON\n"); }
-                | var_decl { $$ = new VariableList(); $$->push_back($<var_decl>1); yyIndentSensitiveStack.push(true); fprintf(stderr, "Indent sensitive ON\n"); }
-                | func_decl_args TCOMMA var_decl { $1->push_back($<var_decl>3); yyIndentSensitiveStack.push(true); fprintf(stderr, "Indent sensitive ON\n"); }
+func_decl_args  : /*blank*/  { $$ = new VariableList(); yyIndentSensitiveStack.push(true); LOG_LEXER("Indent sensitive ON\n"); }
+                | var_decl { $$ = new VariableList(); $$->push_back($<var_decl>1); yyIndentSensitiveStack.push(true); LOG_LEXER("Indent sensitive ON\n"); }
+                | func_decl_args TCOMMA var_decl { $1->push_back($<var_decl>3); yyIndentSensitiveStack.push(true); LOG_LEXER("Indent sensitive ON\n"); }
                 ;
 
 sep             : TSEMICOL

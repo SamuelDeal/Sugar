@@ -62,7 +62,7 @@ class InteractiveCodeGenContext : public CodeGenContext {
 public:
     InteractiveCodeGenContext(NBlock &block): root(block) { ee = NULL; currentBlockOverride = NULL; stmtIndex = 0; }
 
-    void runStatement(NStatement *stmt);
+    GenericValue runStatement(NStatement *stmt);
     std::map<std::string, Value*>& locals() { return blocks.top()->locals; }
     //BasicBlock *currentBlock() { return blocks.top()->block; }
     virtual BasicBlock *currentBlock() { return (currentBlockOverride == NULL ? (blocks.empty() ? NULL : blocks.top()->block) : currentBlockOverride); }

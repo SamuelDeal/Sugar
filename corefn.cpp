@@ -16,7 +16,7 @@ llvm::Function* createPrintfFunction(CodeGenContext& context)
 
     llvm::FunctionType* printf_type =
         llvm::FunctionType::get(
-            llvm::Type::getInt32Ty(getGlobalContext()), printf_arg_types, true);
+            llvm::Type::getInt64Ty(getGlobalContext()), printf_arg_types, true);
 
     llvm::Function *func = llvm::Function::Create(
                 printf_type, llvm::Function::ExternalLinkage,
@@ -30,7 +30,7 @@ llvm::Function* createPrintfFunction(CodeGenContext& context)
 void createEchoIntFunction(CodeGenContext& context, llvm::Function* printfFn)
 {
     std::vector<llvm::Type*> echo_arg_types;
-    echo_arg_types.push_back(llvm::Type::getInt32Ty(getGlobalContext()));
+    echo_arg_types.push_back(llvm::Type::getInt64Ty(getGlobalContext()));
 
     llvm::FunctionType* echo_type =
         llvm::FunctionType::get(
@@ -44,14 +44,14 @@ void createEchoIntFunction(CodeGenContext& context, llvm::Function* printfFn)
     llvm::BasicBlock *bblock = llvm::BasicBlock::Create(getGlobalContext(), "entry", func, 0);
         context.pushBlock(bblock);
 
-    const char *constValue = "%x\n";
+    const char *constValue = "%lld\n";
     llvm::Constant *format_const = llvm::ConstantDataArray::getString(getGlobalContext(), constValue);
     llvm::GlobalVariable *var =
         new llvm::GlobalVariable(
             *context.module, llvm::ArrayType::get(llvm::IntegerType::get(getGlobalContext(), 8), strlen(constValue)+1),
             true, llvm::GlobalValue::PrivateLinkage, format_const, "echo_int_format");
     llvm::Constant *zero =
-        llvm::Constant::getNullValue(llvm::IntegerType::getInt32Ty(getGlobalContext()));
+        llvm::Constant::getNullValue(llvm::IntegerType::getInt64Ty(getGlobalContext()));
 
     std::vector<llvm::Constant*> indices;
     indices.push_back(zero);
@@ -72,7 +72,7 @@ void createEchoIntFunction(CodeGenContext& context, llvm::Function* printfFn)
     context.popBlock();
 
     std::list<llvm::Type *> types;
-    types.push_back(llvm::Type::getInt32Ty(getGlobalContext()));
+    types.push_back(llvm::Type::getInt64Ty(getGlobalContext()));
     core::functionList.addFunction("echo", func, types);
 }
 
@@ -100,7 +100,7 @@ void createEchoDoubleFunction(CodeGenContext& context, llvm::Function* printfFn)
             *context.module, llvm::ArrayType::get(llvm::IntegerType::get(getGlobalContext(), 8), strlen(constValue)+1),
             true, llvm::GlobalValue::PrivateLinkage, format_const, "echo_double_format");
     llvm::Constant *zero =
-        llvm::Constant::getNullValue(llvm::IntegerType::getInt32Ty(getGlobalContext()));
+        llvm::Constant::getNullValue(llvm::IntegerType::getInt64Ty(getGlobalContext()));
 
     std::vector<llvm::Constant*> indices;
     indices.push_back(zero);

@@ -18,7 +18,8 @@ HEADERS += \
     complete.h \
     EditLineReader.h \
     LineReader.h \
-    CodeGenerator.h
+    CodeGenerator.h \
+    config.h
 
 OTHER_FILES += \
     parser.y \
