@@ -12,7 +12,6 @@
 
 using namespace std;
 
-//extern int yyparse();
 NBlock* programBlock = new NBlock();
 
 int main(int argc, char **argv)

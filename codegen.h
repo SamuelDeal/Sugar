@@ -40,7 +40,7 @@ protected:
 
 public:
     Module *module;
-    CodeGenContext() { module = new Module("main", getGlobalContext());}
+    CodeGenContext() { module = new Module("mainModule", getGlobalContext());}
 
     void generateCode(NBlock& root);
     GenericValue runCode();

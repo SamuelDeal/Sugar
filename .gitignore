@@ -20,3 +20,5 @@ complete.o
 lexer.hpp
 sugari
 sugari.o
+sugarc
+sugarc.o

@@ -6,69 +6,104 @@
 #include "parser.hpp"
 #include "config.h"
 
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/ToolOutputFile.h"
+#include "llvm/Support/FormattedStream.h"
+#include "llvm/Support/TargetRegistry.h"
+#include "llvm/Support/Host.h"
+#include "llvm/Support/ManagedStatic.h"
+
 //Unusual, but it's the cleanest way
 #define INTERACTIVE_INPUT 0
 #include "lexer.cpp"
 
 using namespace std;
 
-//extern int yyparse();
 NBlock* programBlock = new NBlock();
+
+bool parseSource(FILE* src, CodeGenContext &context){
+    yyin =  src;
+    yyparse();
+    context.generateCode(*programBlock);
+    return true;
+}
+
+
+bool generateObjectFile(CodeGenContext &context, const std::string &output){
+    llvm_shutdown_obj Y;  // Call llvm_shutdown() on exit.
+
+    InitializeAllTargetMCs();
+    InitializeAllAsmPrinters();
+    InitializeAllAsmParsers();
+
+    std::string error;
+    tool_output_file out(output.c_str(), error, raw_fd_ostream::F_Binary);
+    if (!error.empty()) {
+        return false;
+    }
+    formatted_raw_ostream fos(out.os());
+    PassManager pm;
+
+    InitializeAllTargetInfos();
+    Triple triple(sys::getDefaultTargetTriple());
+    const Target *targetLookup = TargetRegistry::lookupTarget("", triple, error);
+    if (!targetLookup) {
+      errs() << error;
+      return false;
+    }
+    TargetOptions Options;
+    std::auto_ptr<TargetMachine> target(targetLookup->createTargetMachine(triple.getTriple(),
+                "", "", Options, Reloc::Default, CodeModel::Default, CodeGenOpt::Default));
+    if ((*target).addPassesToEmitFile(pm, fos, TargetMachine::CGFT_ObjectFile, false, 0, 0)) {
+      errs() << "target does not support generation of this file type!\n";
+      return false;
+    }
+
+    pm.run(*context.module);
+
+    out.keep();
+    return true;
+}
+
+bool generateExecFile(const std::string &objectFile, const std::string &out){
+    std::string cmd = "gcc";
+    cmd += " -o ";
+    cmd += out;
+    cmd += " ";
+    cmd += objectFile;
+
+    system(cmd.c_str());
+    return true;
+}
 
 int main(int argc, char **argv)
 {
-    if(argc != 1 && argc != 2){
+    if(argc != 2 && argc != 3){
         std::cout << "Usage: " << argv[0] << "[INPUT_FILE] OUTPUT_FILE" << std::endl;
         return 1;
     }
 
     yy_flex_debug = DEBUG_LEXER;
     yydebug = DEBUG_PARSER;
-    if(argc > 2){
-        yyin = fopen(argv[1],"r");
-    }
-    std::string output = argv[2];
+    std::string objectFilename = tmpnam(NULL);
 
-    llvm_shutdown_obj Y;  // Call llvm_shutdown() on exit.
     InitializeNativeTarget();
-
-    yyparse();
-
     CodeGenContext context;
-    context.generateCode(*programBlock);
 
-    /*InitializeAllTargets();
-    InitializeAllTargetMCs();
-    InitializeAllAsmPrinters();
-    InitializeAllAsmParsers();
-
-    PassRegistry *Registry = PassRegistry::getPassRegistry();
-    initializeCore(*Registry);
-    initializeCodeGen(*Registry);
-    initializeLoopStrengthReducePass(*Registry);
-    initializeLowerIntrinsicsPass(*Registry);
-    initializeUnreachableBlockElimPass(*Registry);
-*/
-    //cl::AddExtraVersionPrinter(TargetRegistry::printRegisteredTargetsForVersion);
-
-    // Get the target specific parser.
-    std::string Error;
-    const Target *TheTarget = TargetRegistry::lookupTarget(MArch, TheTriple,
-                                                           Error);
-    if (!TheTarget) {
-      errs() << argv[0] << ": " << Error;
-      return 1;
+    if(!parseSource(argc > 2 ? fopen(argv[1],"r") : stdin, context)){
+        std::cerr << "Unable to parse source" << std::endl;
+        return 1;
     }
 
-    std::string FeaturesStr;
-    if (MAttrs.size()) {
-      SubtargetFeatures Features;
-      for (unsigned i = 0; i != MAttrs.size(); ++i)
-        Features.AddFeature(MAttrs[i]);
-      FeaturesStr = Features.getString();
+    if(!generateObjectFile(context, objectFilename)){
+        std::cerr << "Unable to generate object file" << std::endl;
+        return 1;
     }
 
-    CodeGenOpt::Level OLvl = CodeGenOpt::Default; //CodeGenOpt::Aggressive;
+    if(!generateExecFile(objectFilename, argv[(argc == 2 ? 1 : 2)])){
+        std::cerr << "Unable to link executable" << std::endl;
+        return 1;
+    }
 
     return 0;
 }
