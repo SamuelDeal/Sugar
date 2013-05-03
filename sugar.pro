@@ -8,7 +8,9 @@ SOURCES += \
     EditLineReader.cpp \
     sugari.cpp \
     test.cpp \
-    CodeGenerator.cpp
+    CodeGenerator.cpp \
+    test.cpp \
+    sugarc.cpp
 
 HEADERS += \
     codegen.h \

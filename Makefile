@@ -1,16 +1,14 @@
-all: sugar sugari
+all: sugar sugari sugarc
 
 OBJS = parser.o  \
        codegen.o \
        corefn.o  \
        functionimpl.o \
        functionlist.o \
-       EditLineReader.o \
-       complete.o \
 
 CPPFLAGS = `llvm-config --cppflags`
 LDFLAGS = `llvm-config --ldflags`
-LIBS = `llvm-config --libs` -ledit -lreadline -lcurses
+LIBS = -lreadline -lcurses
 CC='g++'
 
 clean:
@@ -40,5 +38,9 @@ sugar: $(OBJS) sugar.o
 	
 sugari: $(OBJS) sugari.o
 	$(CC) -ggdb -o $@ $(OBJS) sugari.o $(LIBS) $(LDFLAGS)
+	
+sugarc: $(OBJS) sugarc.o
+	$(CC) -ggdb -o $@ $(OBJS) sugarc.o $(LIBS) $(LDFLAGS)
 
-
+test: test.o
+	$(CC) -ggdb -o $@ test.o $(LIBS) $(LDFLAGS)
