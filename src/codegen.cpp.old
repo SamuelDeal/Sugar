@@ -129,6 +129,9 @@ static Type *typeOf(const NIdentifier& type)
         else if (type.name.compare("Float") == 0) {
                 return Type::getDoubleTy(getGlobalContext());
         }
+        else if (type.name.compare("Bool") == 0) {
+                return Type::getInt8Ty(getGlobalContext());
+        }
         return Type::getVoidTy(getGlobalContext());
 }
 
@@ -141,7 +144,18 @@ static Constant *defaultValueOf(const NIdentifier& type)
         else if (type.name.compare("Float") == 0) {
                 return ConstantFP::get(Type::getDoubleTy(getGlobalContext()), 0);
         }
+        else if (type.name.compare("Bool") == 0) {
+            return ConstantInt::get(Type::getInt8Ty(getGlobalContext()), 0, false);
+        }
         return NULL;
+}
+
+Value *codeGenIsTrue(const NExpression& expr, CodeGenContext& context){
+    return NULL; /*if(expr.getType() == Type::getDoubleTy(getGlobalContext())
+    CodeGenContext& context
+    CreateFCmpONE(CondV,
+                                    ConstantFP::get(getGlobalContext(), APFloat(0.0)),
+                                      "ifcond");*/
 }
 
 
@@ -154,6 +168,10 @@ Value* NInteger::codeGen(CodeGenContext& context) {
         return ConstantInt::get(Type::getInt64Ty(getGlobalContext()), value, true);
 }
 
+Type* NInteger::getType() {
+        return Type::getInt64Ty(getGlobalContext());
+}
+
 Value* NDouble::codeGen(CodeGenContext& context)
 {
 #if DEBUG_GENERATOR
@@ -162,16 +180,27 @@ Value* NDouble::codeGen(CodeGenContext& context)
         return ConstantFP::get(Type::getDoubleTy(getGlobalContext()), value);
 }
 
+Type* NDouble::getType() {
+        return Type::getDoubleTy(getGlobalContext());
+}
+
 Value* NIdentifier::codeGen(CodeGenContext& context)
 {
 #if DEBUG_GENERATOR
         std::cout << "Creating identifier reference: " << name << endl;
 #endif
-        if (context.locals().find(name) == context.locals().end() && context.globals().find(name) == context.globals().end()) {
-                std::cerr << "undeclared variable " << name << endl;
-                return NULL;
+        if (context.locals().find(name) != context.locals().end()) {
+            _type = context.locals()[name]->getType();
+            return new LoadInst(context.locals()[name], "", false, context.currentBlock());
         }
-        return new LoadInst(context.locals()[name], "", false, context.currentBlock());
+        else if(context.globals().find(name) != context.globals().end()){
+            _type = context.locals()[name]->getType();
+            return new LoadInst(context.locals()[name], "", false, context.currentBlock());
+        }
+        else{
+            std::cerr << "undeclared variable " << name << endl;
+            return NULL;
+        }
 }
 
 Value* NMethodCall::codeGen(CodeGenContext& context)
@@ -180,7 +209,7 @@ Value* NMethodCall::codeGen(CodeGenContext& context)
         std::cout << "\n*** Method call generation " << id.name << " \n";
 #endif
         std::vector<Value*> args;
-        ExpressionList::const_iterator it;
+        std::list<Expression*>::const_iterator it;
         for (it = arguments.begin(); it != arguments.end(); it++) {
                 args.push_back((**it).codeGen(context));
         }
@@ -194,9 +223,11 @@ Value* NMethodCall::codeGen(CodeGenContext& context)
         if (function == NULL) {
             Value *result = NULL;
             if (!context.isGlobalContext() && context.locals().find(id.name) != context.locals().end()) {
+                _type = context.locals()[id.name]->getType();
                 result = new LoadInst(context.locals()[id.name], "", false, context.currentBlock());
             }
             else if(context.globals().find(id.name) != context.globals().end()){
+                _type = context.globals()[id.name]->getType();
                 result = new LoadInst(context.globals()[id.name], "", false, context.currentBlock());
                 //return context.globals()[id.name];
             }
@@ -209,6 +240,7 @@ Value* NMethodCall::codeGen(CodeGenContext& context)
             return result;
         }
 
+        _type = function->getReturnType();
         CallInst *call = CallInst::Create(function, makeArrayRef(args), "", context.currentBlock());
 #if DEBUG_GENERATOR
         std::cout << "Creating method call: " << id.name << endl;
@@ -224,6 +256,7 @@ Value* NBinaryOperator::codeGen(CodeGenContext& context)
         std::cout << "Creating binary operation " << op << endl;
 #endif
         if(lValue->getType() == Type::getInt64Ty(getGlobalContext()) && rValue->getType() == Type::getInt64Ty(getGlobalContext())){
+            _type = Type::getInt64Ty(getGlobalContext());
             switch (op) {
                     case TPLUS: 	return BinaryOperator::Create(Instruction::Add, lValue, rValue, "", context.currentBlock());
                     case TMINUS: 	return BinaryOperator::Create(Instruction::Sub, lValue, rValue, "", context.currentBlock());
@@ -235,6 +268,7 @@ Value* NBinaryOperator::codeGen(CodeGenContext& context)
 #endif
         }
         else if(lValue->getType() == Type::getDoubleTy(getGlobalContext()) && rValue->getType() == Type::getDoubleTy(getGlobalContext())){
+            _type = Type::getDoubleTy(getGlobalContext());
             switch (op) {
                     case TPLUS: 	return BinaryOperator::Create(Instruction::FAdd, lValue, rValue, "", context.currentBlock());
                     case TMINUS: 	return BinaryOperator::Create(Instruction::FSub, lValue, rValue, "", context.currentBlock());
@@ -273,18 +307,26 @@ Value* NAssignment::codeGen(CodeGenContext& context)
 
 Value* NBlock::codeGen(CodeGenContext& context)
 {
-        StatementList::const_iterator it;
-        Value *last = NULL;
+        std::list<Statement*>::const_iterator it;
+        Value *lastValue = NULL;
+        NStatement *lastStatement = NULL;
         for (it = statements.begin(); it != statements.end(); it++) {
 #if DEBUG_GENERATOR
                 std::cout << "Generating code for " << typeid(**it).name() << endl;
 #endif
-                last = (**it).codeGen(context);
+                lastStatement = *it;
+                lastValue = lastStatement->codeGen(context);
         }
 #if DEBUG_GENERATOR
         std::cout << "Creating block" << endl;
 #endif
-        return last;
+        if(lastStatement->getExpression() == NULL){
+            _type = Type::getVoidTy(getGlobalContext());
+        }
+        else{
+            _type = lastStatement->getExpression()->getType();
+        }
+        return lastValue;
 }
 
 Value* NExpressionStatement::codeGen(CodeGenContext& context)
@@ -385,3 +427,78 @@ Value* NFunctionDeclaration::codeGen(CodeGenContext& context)
         return function;
 }
 
+Value* NIf::codeGen(CodeGenContext& context) {
+    Value *condV = cond->codeGen(context);
+
+
+    Function *parent = context.currentBlock()->getParent();
+    BasicBlock *thenBB = BasicBlock::Create(getGlobalContext(), "then", parent);
+    BasicBlock *elseBB = BasicBlock::Create(getGlobalContext(), "else");
+    BasicBlock *mergeBB = BasicBlock::Create(getGlobalContext(), "ifcont");
+
+    BranchInst::Create(thenBB, elseBB, condV);
+    context.pushBlock(thenBB);
+    Value *thenValue = thenBlk->codeGen(context);
+    BranchInst::Create(mergeBB);
+    context.popBlock();
+
+    Value *elseValue = NULL;
+    parent->getBasicBlockList().push_back(elseBB);
+    context.pushBlock(elseBB);
+    if(elseBlk != NULL){
+        elseValue = elseBlk->codeGen(context);
+    }
+    context.popBlock();
+
+    parent->getBasicBlockList().push_back(mergeBB);
+
+    if(elseBlk == NULL || elseBlk->getType() != thenBlk->getType()){
+        _type = Type::getVoidTy(getGlobalContext());
+        return NULL;
+    }
+    else{
+        _type = elseBlk->getType();
+        PHINode *phiValue = PHINode::Create(_type, 2);
+        phiValue->addIncoming(thenValue, thenBB);
+        phiValue->addIncoming(elseValue, elseBB);
+        return phiValue;
+    }
+}
+
+Value* NEqComp::codeGen(CodeGenContext& context) {
+    std::list<NExpression *>::iterator it = list.begin();
+    Value *value = NULL;
+    Value *valueLeft = (*it)->codeGen(context);
+    Value *valueComp = NULL;
+    Type *type = (*it)->getType();
+
+    for(++it; it != list.end(); it++){
+        Value *valueRight = (*it)->codeGen(context);
+
+        if(type != (*it)->getType()){
+            std::cout << "Not the same type" << endl;
+            return NULL;
+        }
+        if(type == Type::getInt64Ty(getGlobalContext()) || type == Type::getInt8Ty(getGlobalContext())){
+            valueComp = new ICmpInst(CmpInst::ICMP_EQ, valueLeft, valueRight);
+        }
+        else if(type == Type::getDoubleTy(getGlobalContext())){
+            valueComp = new FCmpInst(CmpInst::FCMP_OEQ, valueLeft, valueRight);
+        }
+        else{
+            std::cout << "Not comparable type" << endl;
+            return NULL;
+        }
+        if(value == NULL){
+            value = valueComp;
+        }
+        else{
+            value = BinaryOperator::Create(Instruction::And, value, valueComp, "", context.currentBlock());
+        }
+    }
+    return value;
+}
+
+llvm::Type* NEqComp::getType() {
+    return Type::getInt8Ty(getGlobalContext());
+}

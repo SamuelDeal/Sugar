@@ -1,11 +1,13 @@
+Int a;
+
 Int do_math(Int a)
   Int x = a * 5 + 3
   echo(x)
   5
 
 Int test(Int a){
-    return 3
     echo(a)
+    a +1
 }
 
 do_math(500)

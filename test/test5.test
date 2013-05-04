@@ -1,0 +1,4 @@
+Int do_math(Int x)
+    x * 7 + 5
+    
+echo do_math(6) 

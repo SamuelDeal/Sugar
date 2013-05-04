@@ -1,15 +1,12 @@
 #include <iostream>
 #include <stdio.h>
-#include "codegen.h"
-#include "node.h"
-#include "functionlist.h"
-#include "EditLineReader.h"
-#include "parser.hpp"
-#include "config.h"
 
-//Unusual, but it's the cleanest way
+#include "config.h"
 #define INTERACTIVE_INPUT 1
-#include "lexer.cpp"
+#include "lexer.hpp"
+
+#include "gen/Interpreter.h"
+#include "gen/GeneratedCode.h"
 
 #if defined(LIBREADLINE) && LIBREADLINE
 
@@ -18,65 +15,55 @@
 
 extern void yyerror(const char *s);
 
-/* Support for the readline and history libraries.  This allows
-   nicer input on the interactive part of input. */
+// Support for the readline and history libraries.  This allows
+// nicer input on the interactive part of input.
 
-/* Variables to help interface readline with bc. */
+// Variables to help interface readline with bc.
 static char *rl_line = (char *)NULL;
 static char *rl_start = (char *)NULL;
 static int   rl_len = 0;
 
-/* Definitions for readline access. */
+// Definitions for readline access.
 extern FILE *rl_instream;
 
-/* rl_input puts upto MAX characters into BUF with the number put in
-   BUF placed in *RESULT.  If the yy input file is the same as
-   rl_instream (stdin), use readline.  Otherwise, just read it.
-*/
-
-static void lexer_input (char *buf, int  *result, int max)
-{
-    //fprintf(stderr, "******* input *******");
-    /*if (yyin != rl_instream)
-    {
-        fprintf(stderr, "******* ! yyin *******");
-        while ( (*result = read( fileno(yyin), buf, max )) < 0 )
-            if (errno != EINTR)
-            {
+// rl_input puts upto MAX characters into BUF with the number put in
+// BUF placed in *RESULT.
+static void lexer_input (char *buf, int  *result, int max) {
+    if (yyin != rl_instream) { //not stdin so read as usual
+        while ( (*result = read( fileno(yyin), buf, max )) < 0 ) {
+            if (errno != EINTR) {
                 yyerror( "read() in flex scanner failed" );
                 exit (1);
             }
+        }
         return;
-    }*/
+    }
 
-    /* Do we need a new string? */
-    if (rl_len == 0)
-    {
-        if (rl_start)
+    if (rl_len == 0) { //Do we need a new string?
+        if (rl_start) {
             free(rl_start);
+        }
         rl_start = readline ("sugar> ");
-        if (rl_start == NULL) {
-            /* end of file */
+        if (rl_start == NULL) { //end of file
             *result = 0;
             rl_len = 0;
             return;
         }
         rl_line = rl_start;
         rl_len = strlen (rl_line)+1;
-        if (rl_len != 1)
+        if (rl_len != 1) {
             add_history (rl_line);
+        }
         rl_line[rl_len-1] = '\n';
         fflush (stdout);
     }
 
-    if (rl_len <= max)
-    {
+    if (rl_len <= max) {
         strncpy (buf, rl_line, rl_len);
         *result = rl_len;
         rl_len = 0;
     }
-    else
-    {
+    else {
         strncpy (buf, rl_line, max);
         *result = max;
         rl_line += max;
@@ -154,33 +141,50 @@ static void lexer_input (char *buf, int *result, int max){
 }
 #endif
 
+using namespace std;
+using namespace sugar;
 
-
-NBlock* programBlock = new NBlock();
-InteractiveCodeGenContext context(*programBlock);
+ast::Block* programBlock = new ast::Block();
+gen::Interpreter *interpreter;
+gen::GeneratedCode *generated;
 
 int main(int argc, char **argv)
 {
     yy_flex_debug = DEBUG_LEXER;
     yydebug = DEBUG_PARSER;
+    rl_instream = stdin;
     if(argc > 1){
         yyin = fopen(argv[1],"r");
-        rl_instream = yyin;
+        if(yyin == NULL){
+            std::cout << "Unable to open " << argv[1] << std::endl;
+            return 1;
+        }
     }
-    rl_readline_name = "sugari";
-    InitializeNativeTarget();
+
+    interpreter = new gen::Interpreter();
+    generated = interpreter->generate(programBlock);
+
     yyparse();
+    return 0;
 }
 
-
-void onMainStatement(NStatement *stmt){
-    if(stmt->isFunctionDeclaration()){
-        programBlock->statements.push_back(stmt);
+void onMainStatement(sugar::ast::Statement *stmt){
+    if(stmt->getKind() == ast::Node::eFunctionDeclaration){
+        programBlock->stmts.push_back(stmt);
     }
-    else{
-        if(stmt->isVarDeclaration()){
-            programBlock->statements.push_back(stmt);
+    else if(stmt->getKind() == ast::Node::eVariableDeclaration){
+        ast::VariableDeclaration *stmtVar = (ast::VariableDeclaration*)stmt;
+        if(stmtVar->assign == NULL){
+            programBlock->stmts.push_back(stmt);
         }
-        context.runStatement(stmt);
+        else{ //split assign and declaration
+            ast::Assignment *assign = new ast::Assignment(stmtVar->id, stmtVar->assign);
+            stmtVar->assign = NULL;
+            programBlock->stmts.push_back(stmtVar);
+            interpreter->run(assign, generated);
+        }
+    }
+    else {
+        interpreter->run(stmt, generated);
     }
 }

@@ -111,7 +111,7 @@ void lyyerror(const char *s){
     exit(1);
 }
 
-#include "node.h"
+#include "ast/all.h"
 #include "parser.hpp"
 //#define SAVE_TOKEN yylval.string = new std::string(yytext, yyleng)
 //#define TOKEN(t) (yylval.token = t)
@@ -236,12 +236,16 @@ static void lexer_input(char *buf, int *result, int max);
 }
 [ \t]                       { yySeachLParent = false; };
 "return"                    { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturn(TRETURN); }
+"if"                        { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturn(TIF); }
+"else"                      { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturn(TELSE); }
+"true"                      { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturn(TTRUE); }
+"false"                     { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturn(TFALSE); }
 [A-Z][a-zA-Z0-9_\?]*        { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturnId(TTYPENAME); }
 [a-z_][a-zA-Z0-9_\?!]*      { yySkipNL = false; yySeachLParent = true; yyIndentCheck(); yyReturnId(TIDENTIFIER); }
 [0-9]+\.[0-9]*              { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturnId(TDOUBLE); }
 [0-9]+                      { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturnId(TINTEGER); }
 "="                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TEQUAL); }
-"=="                        { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCEQ); }
+"=="                        { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturnId(TCEQ); }
 "!="                        { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCNE); }
 "<"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCLT); }
 "<="                        { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCLE); }
@@ -249,10 +253,10 @@ static void lexer_input(char *buf, int *result, int max);
 ">="                        { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCGE); }
 "."                         { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturn(TDOT); }
 ","                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCOMMA); }
-"+"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TPLUS); }
-"-"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TMINUS); }
-"*"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TMUL); }
-"/"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TDIV); }
+"+"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturnId(TPLUS); }
+"-"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturnId(TMINUS); }
+"*"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturnId(TMUL); }
+"/"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturnId(TDIV); }
 ";"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TSEMICOL); }
 "("                         {
     yySkipNL = true;

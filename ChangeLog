@@ -1,0 +1,10 @@
+ Mon May 27 13:41:46 2013 +0200 Samuel Déal <samuel.deal@gmail.com>
+	* Release of Version 0.0.2
+	* Fix readline issue
+	* Major rewrite
+	* Cleaner project structure/Makefile
+	* Adding some tests 
+
+Fri May 3 20:25:53 2013 +0300  Samuel Déal <samuel.deal@gmail.com>
+	* Release of Version 0.0.1: Naive implementation
+	

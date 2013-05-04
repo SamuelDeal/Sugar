@@ -1,31 +1,154 @@
 SOURCES += \
     sugar.cpp \
-    codegen.cpp \
-    corefn.cpp \
-    functionlist.cpp \
-    functionimpl.cpp \
-    complete.c \
-    EditLineReader.cpp \
-    sugari.cpp \
     test.cpp \
-    CodeGenerator.cpp \
     test.cpp \
-    sugarc.cpp
+    ast/Node.cpp \
+    core/Type.cpp \
+    core/Scope.cpp \
+    ast/Block.cpp \
+    ast/Expression.cpp \
+    ast/Statement.cpp \
+    ast/Constant.cpp \
+    ast/Identifier.cpp \
+    ast/FunctionCall.cpp \
+    ast/ExpressionStmt.cpp \
+    ast/ReturnStmt.cpp \
+    ast/Assignment.cpp \
+    ast/VariableDeclaration.cpp \
+    ast/FunctionDeclaration.cpp \
+    ast/Comparison.cpp \
+    ast/IfExpression.cpp \
+    lexer.cpp \
+    parser.cpp \
+    gen/Compiler.cpp \
+    gen/Interpreter.cpp \
+    gen/Generator.cpp \
+    core/CastGraph.cpp \
+    core/Function.cpp \
+    codegen.cpp.old \
+    complete.c.old \
+    EditLineReader.cpp.old \
+    functionimpl.cpp.old \
+    functionlist.cpp.old \
+    corefn.cpp.old \
+    sugarc.cpp.old \
+    sugari.cpp.old \
+    gen/GeneratedCode.cpp \
+    gen/Generation.cpp \
+    gen/AbstractGenerator.cpp \
+    core/Variable.cpp \
+    src/ast/VariableDeclaration.cpp \
+    src/ast/Statement.cpp \
+    src/ast/ReturnStmt.cpp \
+    src/ast/Node.cpp \
+    src/ast/IfExpression.cpp \
+    src/ast/Identifier.cpp \
+    src/ast/FunctionDeclaration.cpp \
+    src/ast/FunctionCall.cpp \
+    src/ast/ExpressionStmt.cpp \
+    src/ast/Expression.cpp \
+    src/ast/Constant.cpp \
+    src/ast/Comparison.cpp \
+    src/ast/Block.cpp \
+    src/ast/Assignment.cpp \
+    src/core/Variable.cpp \
+    src/core/Type.cpp \
+    src/core/Scope.cpp \
+    src/core/Function.cpp \
+    src/core/CastGraph.cpp \
+    src/gen/AbstractGenerator.cpp \
+    src/gen/Interpreter.cpp \
+    src/gen/Generator.cpp \
+    src/gen/Generation.cpp \
+    src/gen/GeneratedCode.cpp \
+    src/gen/Compiler.cpp \
+    src/sugar.cpp \
+    src/core/AbstractFunction.cpp \
+    src/core/Operator.cpp \
+    src/core/Cast.cpp \
+    src/ast/Operator.cpp \
+    src/ast/TypeIdentifier.cpp \
+    src/sugari.cpp \
+    src/utils.cpp \
+    src/sugarc.cpp
 
 HEADERS += \
     codegen.h \
-    node.h \
     functionlist.h \
     functionimpl.h \
     complete.h \
     EditLineReader.h \
     LineReader.h \
-    CodeGenerator.h \
-    config.h
+    config.h \
+    ast/Node.h \
+    core/Type.h \
+    core/Scope.h \
+    ast/Block.h \
+    ast/Expression.h \
+    ast/Statement.h \
+    ast/Constant.h \
+    ast/Identifier.h \
+    ast/FunctionCall.h \
+    ast/ExpressionStmt.h \
+    ast/ReturnStmt.h \
+    ast/Assignment.h \
+    ast/VariableDeclaration.h \
+    ast/FunctionDeclaration.h \
+    ast/Comparison.h \
+    ast/IfExpression.h \
+    ast/all.h \
+    lexer.hpp \
+    node2.h \
+    gen/Compiler.h \
+    gen/Interpreter.h \
+    gen/Generator.h \
+    core/CastGraph.h \
+    core/Function.h \
+    gen/GeneratedCode.h \
+    gen/Generation.h \
+    gen/AbstractGenerator.h \
+    core/Variable.h \
+    src/ast/VariableDeclaration.h \
+    src/ast/Statement.h \
+    src/ast/ReturnStmt.h \
+    src/ast/Node.h \
+    src/ast/IfExpression.h \
+    src/ast/Identifier.h \
+    src/ast/FunctionDeclaration.h \
+    src/ast/FunctionCall.h \
+    src/ast/ExpressionStmt.h \
+    src/ast/Expression.h \
+    src/ast/Constant.h \
+    src/ast/Comparison.h \
+    src/ast/Block.h \
+    src/ast/Assignment.h \
+    src/ast/all.h \
+    src/core/Variable.h \
+    src/core/Type.h \
+    src/core/Scope.h \
+    src/core/Function.h \
+    src/core/CastGraph.h \
+    src/gen/Generator.h \
+    src/gen/Generation.h \
+    src/gen/GeneratedCode.h \
+    src/gen/Compiler.h \
+    src/gen/AbstractGenerator.h \
+    src/gen/Interpreter.h \
+    src/core/AbstractFunction.h \
+    src/core/Operator.h \
+    src/core/Cast.h \
+    src/ast/Operator.h \
+    src/ast/TypeIdentifier.h \
+    src/config.h \
+    src/utils.h
 
 OTHER_FILES += \
     parser.y \
     lexer.l \
     CMakeLists.txt \
     example.txt \
-    Makefile
+    Makefile \
+    example2.txt \
+    README.md \
+    src/lexer.l \
+    src/parser.y
