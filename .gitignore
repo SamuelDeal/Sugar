@@ -13,6 +13,5 @@ parser.ps
 lexer.hpp
 sugari
 sugarc
-test/*.result
-test/*.exec
+test/results
 cmds
