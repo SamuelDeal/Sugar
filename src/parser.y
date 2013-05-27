@@ -160,7 +160,7 @@ expr			: expr TMUL expr { $$ = makeOperatorCall($1, TMUL, $3); }
                 | TLPAREN expr TRPAREN { $$ = $2; }
                 | value { $$ = $1; }
                 | ident %prec LOOSE_FUNC_CALL { $$ = $1; /* WARNING: var or implicit function call without args */ }
-                | comp_eq %prec LOOSE_COMP { $$ = new ast::Comparison(ast::Comparison::eEquality, $<expr_list>1); }
+                | comp_eq %prec LOOSE_COMP { $$ = new ast::Comparison(TCEQ, $<expr_list>1); }
                 | if_else { $$ = $1; }
                 ;
 

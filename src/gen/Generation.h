@@ -23,6 +23,7 @@ class Generation
 {
 public:
     Generation();
+    ~Generation();
     void pushBlock(llvm::BasicBlock *block, bool forceGlobal = false);
     void popBlock();
     llvm::Module* getModule() const;
@@ -39,6 +40,10 @@ protected:
     core::Type intType;
     core::Type floatType;
     core::Type voidType;
+
+    llvm::Constant *trueConst;
+    llvm::Constant *falseConst;
+    llvm::Constant *intZero;
 
     friend class Generator;
     friend class Interpreter;

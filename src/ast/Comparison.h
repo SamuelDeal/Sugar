@@ -11,14 +11,10 @@ namespace ast {
 class Comparison : public Expression
 {
 public:
-    enum Kind {
-        eEquality
-    };
-
-    Comparison(Kind kind, std::list<Expression *> *expressions);
+    Comparison(int operatorId, std::list<Expression *> *expressions);
     virtual ~Comparison();
 
-    Kind kind;
+    int operatorId;
     std::list<Expression *> *expressions;
 };
 

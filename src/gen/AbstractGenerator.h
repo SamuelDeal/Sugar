@@ -24,6 +24,8 @@ public:
     virtual llvm::Value* generateMulIntInt(std::vector<llvm::Value*> values, Generation &gen) = 0;
     virtual llvm::Value* generateMulFloatFloat(std::vector<llvm::Value*> values, Generation &gen) = 0;
     virtual llvm::Value* generateDivFloatFloat(std::vector<llvm::Value*> values, Generation &gen) = 0;
+    virtual llvm::Value* generateEqIntInt(std::vector<llvm::Value*> values, Generation &gen) = 0;
+    virtual llvm::Value* generateEqFloatFloat(std::vector<llvm::Value*> values, Generation &gen) = 0;
     virtual llvm::Value* generateIntToFloatCast(std::vector<llvm::Value*> values, Generation &gen) = 0;
 };
 

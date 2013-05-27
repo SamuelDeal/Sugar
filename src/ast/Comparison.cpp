@@ -3,10 +3,10 @@
 namespace sugar {
 namespace ast {
 
-Comparison::Comparison(Kind kind, std::list<Expression *> *expressions) : Expression(Node::eComparison)
+Comparison::Comparison(int operatorId, std::list<Expression *> *expressions) : Expression(Node::eComparison)
 {
     this->expressions = expressions;
-    this->kind = kind;
+    this->operatorId = operatorId;
 }
 
 Comparison::~Comparison(){

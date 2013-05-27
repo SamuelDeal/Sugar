@@ -19,6 +19,7 @@ public:
     const std::string& getName() const;
     operator llvm::Type*() const;
     bool operator==(const Type &other) const;
+    bool operator!=(const Type &other) const;
 
 protected:
     llvm::Type *_llvmType;

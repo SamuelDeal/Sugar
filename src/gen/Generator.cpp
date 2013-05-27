@@ -88,6 +88,14 @@ llvm::Value* Generator::generateDivFloatFloat(std::vector<llvm::Value*> values, 
     return gen.builder.CreateFDiv(values[0], values[1]);
 }
 
+llvm::Value* Generator::generateEqIntInt(std::vector<llvm::Value*> values, Generation &gen){
+    return gen.builder.CreateICmpEQ(values[0], values[1]);
+}
+
+llvm::Value* Generator::generateEqFloatFloat(std::vector<llvm::Value*> values, Generation &gen){
+    return gen.builder.CreateFCmpUEQ(values[0], values[1]);
+}
+
 llvm::Value* Generator::generateIntToFloatCast(std::vector<llvm::Value*> values, Generation &gen){
     return gen.builder.CreateFPToSI(values[0], gen.floatType);
 }
@@ -137,8 +145,22 @@ void Generator::initCore(Generation &gen){
     op = new Operator(TDIV, &AbstractGenerator::generateDivFloatFloat, &gen.floatType, types);
     gen.rootScope.addOperator(op);
 
+    types.clear();
+    types.push_back(&gen.intType);
+    types.push_back(&gen.intType);
+    op = new Operator(TCEQ, &AbstractGenerator::generateEqIntInt, &gen.boolType, types);
+    gen.rootScope.addOperator(op);
+
+    types.clear();
+    types.push_back(&gen.floatType);
+    types.push_back(&gen.floatType);
+    op = new Operator(TDIV, &AbstractGenerator::generateEqFloatFloat, &gen.boolType, types);
+    gen.rootScope.addOperator(op);
+
+
     llvm::Function *printf = generatePrintfFunction(gen);
 
+    gen.rootScope.addFunction(generateEchoBoolFunction(printf, gen));
     gen.rootScope.addFunction(generateEchoIntFunction(printf, gen));
     gen.rootScope.addFunction(generateEchoDoubleFunction(printf, gen));
 }
@@ -158,6 +180,55 @@ llvm::Function* Generator::generatePrintfFunction(Generation &gen) {
     return func;
 }
 
+Function* Generator::generateEchoBoolFunction(llvm::Function* printfFn, Generation &gen) {
+    std::vector<llvm::Type*> echo_arg_types;
+    echo_arg_types.push_back(gen.boolType);
+
+    llvm::FunctionType* echo_type = llvm::FunctionType::get(gen.voidType, echo_arg_types, false);
+    llvm::Function *func = llvm::Function::Create(
+                echo_type, llvm::Function::InternalLinkage,
+                llvm::Twine("echo_bool"),
+                gen.module
+           );
+    llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
+
+    const char *trueConstValue = "True\n";
+    llvm::Constant *trueStrConst = llvm::ConstantDataArray::getString(gen.context, trueConstValue);
+    llvm::GlobalVariable *trueVar = new llvm::GlobalVariable(
+            *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
+            strlen(trueConstValue)+1), true, llvm::GlobalValue::PrivateLinkage, trueStrConst, "echo_true_str");
+    std::vector<llvm::Constant*> indicesTrue;
+    indicesTrue.push_back(gen.intZero);
+    indicesTrue.push_back(gen.intZero);
+    llvm::Constant *trueRef = llvm::ConstantExpr::getGetElementPtr(trueVar, indicesTrue);
+
+    const char *falseConstValue = "False\n";
+    llvm::Constant *falseStrConst = llvm::ConstantDataArray::getString(gen.context, falseConstValue);
+    llvm::GlobalVariable *falseVar = new llvm::GlobalVariable(
+            *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
+            strlen(falseConstValue)+1), true, llvm::GlobalValue::PrivateLinkage, falseStrConst, "echo_false_str");
+    std::vector<llvm::Constant*> indicesFalse;
+    indicesFalse.push_back(gen.intZero);
+    indicesFalse.push_back(gen.intZero);
+    llvm::Constant *falseRef = llvm::ConstantExpr::getGetElementPtr(falseVar, indicesFalse);
+
+    llvm::Function::arg_iterator argsValues = func->arg_begin();
+    llvm::Value* toPrint = argsValues++;
+    toPrint->setName("toPrint");
+
+    llvm::ICmpInst* testResult = new llvm::ICmpInst(*bblock, llvm::ICmpInst::ICMP_NE, toPrint, gen.falseConst, "");
+    llvm::SelectInst* displayed = llvm::SelectInst::Create(testResult, trueRef, falseRef, "", bblock);
+
+    std::vector<llvm::Value*> args;
+    args.push_back(displayed);
+    llvm::CallInst *call = llvm::CallInst::Create(printfFn, makeArrayRef(args), "", bblock);
+    llvm::ReturnInst::Create(gen.context, bblock);
+
+    std::list<const Type *> types;
+    types.push_back(&gen.boolType);
+    return new Function("echo", func, &gen.voidType, types);
+}
+
 Function* Generator::generateEchoIntFunction(llvm::Function* printfFn, Generation &gen) {
     std::vector<llvm::Type*> echo_arg_types;
     echo_arg_types.push_back(gen.intType);
@@ -170,19 +241,16 @@ Function* Generator::generateEchoIntFunction(llvm::Function* printfFn, Generatio
                 gen.module
            );
     llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
-        //context.pushBlock(bblock);
-
     const char *constValue = "%lld\n";
 
     llvm::Constant *format_const = llvm::ConstantDataArray::getString(gen.context, constValue);
     llvm::GlobalVariable *var = new llvm::GlobalVariable(
             *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
             strlen(constValue)+1), true, llvm::GlobalValue::PrivateLinkage, format_const, "echo_int_format");
-    llvm::Constant *zero = llvm::Constant::getNullValue(gen.intType);
 
     std::vector<llvm::Constant*> indices;
-    indices.push_back(zero);
-    indices.push_back(zero);
+    indices.push_back(gen.intZero);
+    indices.push_back(gen.intZero);
     llvm::Constant *var_ref = llvm::ConstantExpr::getGetElementPtr(var, indices);
 
     std::vector<llvm::Value*> args;
@@ -195,7 +263,6 @@ Function* Generator::generateEchoIntFunction(llvm::Function* printfFn, Generatio
 
     llvm::CallInst *call = llvm::CallInst::Create(printfFn, makeArrayRef(args), "", bblock);
     llvm::ReturnInst::Create(gen.context, bblock);
-    //context.popBlock();
 
     std::list<const Type *> types;
     types.push_back(&gen.intType);
@@ -221,11 +288,10 @@ Function* Generator::generateEchoDoubleFunction(llvm::Function* printfFn, Genera
     llvm::GlobalVariable *var = new llvm::GlobalVariable(
             *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
             strlen(constValue)+1), true, llvm::GlobalValue::PrivateLinkage, format_const, "echo_double_format");
-    llvm::Constant *zero = llvm::Constant::getNullValue(gen.intType);
 
     std::vector<llvm::Constant*> indices;
-    indices.push_back(zero);
-    indices.push_back(zero);
+    indices.push_back(gen.intZero);
+    indices.push_back(gen.intZero);
     llvm::Constant *var_ref = llvm::ConstantExpr::getGetElementPtr(var, indices);
 
     std::vector<llvm::Value*> args;
@@ -243,6 +309,12 @@ Function* Generator::generateEchoDoubleFunction(llvm::Function* printfFn, Genera
     std::list<const Type *> types;
     types.push_back(&gen.floatType);
     return new Function("echo", func, &gen.voidType, types);
+}
+
+
+llvm::Value* Generator::parse(ast::TypeIdentifier *node, Generation &gen){
+    //Nothing to do
+    return NULL;
 }
 
 llvm::Value* Generator::parseNode(ast::Node *node, Generation &gen){
@@ -418,6 +490,46 @@ llvm::Value* Generator::parse(ast::Operator *node, Generation &gen){
     }
 }
 
+llvm::Value* Generator::parse(ast::Identifier *node, Generation &gen){
+#if DEBUG_GENERATOR
+    std::cerr << "\n*** Identifier " << *node->name << std::endl;
+#endif
+    Variable *var = gen.scope->getVar(*node->name);
+    if(var != NULL){
+        node->setType(var->getType());
+        return new llvm::LoadInst(*var, "", false, *gen.scope);
+    }
+    else{
+        std::list<Function *> functions = gen.scope->getFuncs(*node->name);
+        if (functions.empty()){
+            std::cout << "undeclared variable or function " << *node->name << std::endl;
+            return NULL;
+        }
+        else{
+            std::list<const Type *> types;
+            for(std::list<Function *>::iterator it = functions.begin(); it != functions.end(); it++){
+                if((*it)->match(types, gen.castGraph)){
+                    node->setType(*(*it)->getReturnType());
+                    llvm::Value *call;
+                    if((*it)->isNative()){
+                        std::vector<llvm::Value*> args;
+                        call = CALL_MEMBER_FN(*this, (*it)->getNative())(args, gen);
+                    }
+                    else{
+                        call = gen.builder.CreateCall(**it);
+                    }
+#if DEBUG_GENERATOR
+                    std::cerr << "Creating method call " << *node->name << std::endl;
+#endif
+                    return call;
+                }
+            }
+            std::cout << "undeclared variable or function " << *node->name << std::endl;
+            return NULL;
+        }
+    }
+}
+
 llvm::Value* Generator::parse(ast::FunctionDeclaration *node, Generation &gen){
     Type *returnType = gen.scope->getType(*node->type->name);
     if(NULL == returnType){
@@ -471,43 +583,6 @@ llvm::Value* Generator::parse(ast::FunctionDeclaration *node, Generation &gen){
     return function;
 }
 
-llvm::Value* Generator::parse(ast::IfExpression *node, Generation &gen){
-    llvm::Value *condV = parseNode(node->cond, gen);
-
-    llvm::Function *parent = ((llvm::BasicBlock*)*gen.scope)->getParent();
-    llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(gen.context, "then", parent);
-    llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(gen.context, "else");
-    llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(gen.context, "ifcont");
-
-    llvm::BranchInst::Create(thenBB, elseBB, condV);
-    gen.pushBlock(thenBB);
-    llvm::Value *thenValue = parse(node->thenBlk, gen);
-    llvm::BranchInst::Create(mergeBB);
-    gen.popBlock();
-
-    llvm::Value *elseValue = NULL;
-    parent->getBasicBlockList().push_back(elseBB);
-    gen.pushBlock(elseBB);
-    if(node->elseBlk != NULL){
-        elseValue = parse(node->elseBlk, gen);
-    }
-    gen.popBlock();
-
-    parent->getBasicBlockList().push_back(mergeBB);
-
-    if(node->elseBlk == NULL || node->elseBlk->getType() != node->thenBlk->getType()){
-        node->setType(gen.voidType);
-        return NULL;
-    }
-    else{
-        node->setType(*node->elseBlk->getType());
-        llvm::PHINode *phiValue = llvm::PHINode::Create(*node->getType(), 2);
-        phiValue->addIncoming(thenValue, thenBB);
-        phiValue->addIncoming(elseValue, elseBB);
-        return phiValue;
-    }
-}
-
 llvm::Value* Generator::parse(ast::VariableDeclaration *node, Generation &gen){
     Type *type = gen.scope->getType(*node->type->name);
     if(type == NULL){
@@ -548,57 +623,90 @@ llvm::Value* Generator::parse(ast::VariableDeclaration *node, Generation &gen){
     }
 }
 
-llvm::Value* Generator::parse(ast::Identifier *node, Generation &gen){
-#if DEBUG_GENERATOR
-    std::cerr << "\n*** Identifier " << *node->name << std::endl;
-#endif
-    Variable *var = gen.scope->getVar(*node->name);
-    if(var != NULL){
-        node->setType(var->getType());
-        return new llvm::LoadInst(*var, "", false, *gen.scope);
+llvm::Value* Generator::parse(ast::IfExpression *node, Generation &gen){
+    llvm::Value *condV = parseNode(node->cond, gen);
+
+    llvm::Function *parent = ((llvm::BasicBlock*)*gen.scope)->getParent();
+    llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(gen.context, "then", parent);
+    llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(gen.context, "else");
+    llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(gen.context, "ifcont");
+
+    llvm::BranchInst::Create(thenBB, elseBB, condV);
+    gen.pushBlock(thenBB);
+    llvm::Value *thenValue = parse(node->thenBlk, gen);
+    llvm::BranchInst::Create(mergeBB);
+    gen.popBlock();
+
+    llvm::Value *elseValue = NULL;
+    parent->getBasicBlockList().push_back(elseBB);
+    gen.pushBlock(elseBB);
+    if(node->elseBlk != NULL){
+        elseValue = parse(node->elseBlk, gen);
+    }
+    gen.popBlock();
+
+    parent->getBasicBlockList().push_back(mergeBB);
+
+    if(node->elseBlk == NULL || node->elseBlk->getType() != node->thenBlk->getType()){
+        node->setType(gen.voidType);
+        return NULL;
     }
     else{
-        std::list<Function *> functions = gen.scope->getFuncs(*node->name);
-        if (functions.empty()){
-            std::cout << "undeclared variable or function " << *node->name << std::endl;
-            return NULL;
-        }
-        else{
-            std::list<const Type *> types;
-            for(std::list<Function *>::iterator it = functions.begin(); it != functions.end(); it++){
-                if((*it)->match(types, gen.castGraph)){
-                    node->setType(*(*it)->getReturnType());
-                    llvm::Value *call;
-                    if((*it)->isNative()){
-                        std::vector<llvm::Value*> args;
-                        call = CALL_MEMBER_FN(*this, (*it)->getNative())(args, gen);
-                    }
-                    else{
-                        call = gen.builder.CreateCall(**it);
-                    }
-#if DEBUG_GENERATOR
-                    std::cerr << "Creating method call " << *node->name << std::endl;
-#endif
-                    return call;
-                }
-            }
-            std::cout << "undeclared variable or function " << *node->name << std::endl;
-            return NULL;
-        }
+        node->setType(*node->elseBlk->getType());
+        llvm::PHINode *phiValue = llvm::PHINode::Create(*node->getType(), 2);
+        phiValue->addIncoming(thenValue, thenBB);
+        phiValue->addIncoming(elseValue, elseBB);
+        return phiValue;
     }
 }
 
 llvm::Value* Generator::parse(ast::Comparison *node, Generation &gen){
-    return NULL;
+    if(node->expressions->size() < 2){
+        std::cout << "At least 2 expressions are required for comparison" << std::endl;
+        return NULL;
+    }
+    node->setType(gen.boolType);
+
+    std::list<ast::Expression *>::iterator it = node->expressions->begin();
+    ast::Expression *left = *it;
+    llvm::Value *result = NULL;
+    llvm::Value *valueComp = NULL;
+
+    //llvm::Value *valueLeft = parseNode(*it, gen);
+    //
+    //core::Type *type = (*it)->getType();
+
+    for(++it; it != node->expressions->end(); it++){
+        std::list<ast::Expression*> *args = new std::list<ast::Expression*>();
+        args->push_back(left);
+        args->push_back(*it);
+        ast::Operator *operatorNode = new ast::Operator(node->operatorId, args);
+        valueComp = parse(operatorNode, gen);
+        if(valueComp == NULL){
+            std::cout << "comparison failed" << std::endl;
+            return NULL;
+        }
+        if(*operatorNode->getType() != gen.boolType){
+            std::cout << "comparison is not boolean" << std::endl;
+            return NULL;
+        }
+        operatorNode->args->clear();
+        delete operatorNode;
+        left = *it;
+        if(result == NULL){
+            result = valueComp;
+        }
+        else{
+            result = gen.builder.CreateNSWAdd(result, valueComp);
+        }
+    }
+    return result;
 }
+
 llvm::Value* Generator::parse(ast::ReturnStmt *node, Generation &gen){
     return NULL;
 }
 
-llvm::Value* Generator::parse(ast::TypeIdentifier *node, Generation &gen){
-    //Nothing to do
-    return NULL;
-}
 
 } // namespace gen
 } // namespace sugar

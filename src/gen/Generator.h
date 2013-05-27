@@ -47,6 +47,8 @@ public:
     virtual llvm::Value* generateMulIntInt(std::vector<llvm::Value*> values, Generation &gen);
     virtual llvm::Value* generateMulFloatFloat(std::vector<llvm::Value*> values, Generation &gen);
     virtual llvm::Value* generateDivFloatFloat(std::vector<llvm::Value*> values, Generation &gen);
+    virtual llvm::Value* generateEqIntInt(std::vector<llvm::Value*> values, Generation &gen);
+    virtual llvm::Value* generateEqFloatFloat(std::vector<llvm::Value*> values, Generation &gen);
     virtual llvm::Value* generateIntToFloatCast(std::vector<llvm::Value*> values, Generation &gen);
 
 protected:
@@ -68,6 +70,7 @@ protected:
     virtual llvm::Value* parse(ast::VariableDeclaration *node, Generation &gen);
 
     virtual llvm::Function* generatePrintfFunction(Generation &gen);
+    virtual core::Function* generateEchoBoolFunction(llvm::Function* printfFn, Generation &gen);
     virtual core::Function* generateEchoIntFunction(llvm::Function* printfFn, Generation &gen);
     virtual core::Function* generateEchoDoubleFunction(llvm::Function* printfFn, Generation &gen);
 };

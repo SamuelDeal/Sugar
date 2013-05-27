@@ -20,5 +20,9 @@ bool Type::operator==(const Type &other) const{
     return _llvmType  == other._llvmType;
 }
 
+bool Type::operator!=(const Type &other) const{
+    return _llvmType != other._llvmType;
+}
+
 } // namespace core
 } // namespace sugar
