@@ -635,7 +635,7 @@ llvm::Value* Generator::parse(ast::IfExpression *node, Generation &gen){
     llvm::Function *parent = ((llvm::BasicBlock*)*gen.scope)->getParent();
     llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(gen.context, "then", parent);
     llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(gen.context, "else");
-    llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(gen.context, "ifcont");
+    llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(gen.context, "endif");
 
     llvm::BranchInst::Create(thenBB, elseBB, condV);
     gen.pushBlock(thenBB);
