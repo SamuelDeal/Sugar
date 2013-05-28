@@ -74,7 +74,8 @@ void Interpreter::run(ast::Statement *stmt, GeneratedCode *genCode) {
     parseNode(stmt, gen);
     gen.popBlock();
 
-    llvm::ReturnInst::Create(gen.context, runBlock);
+    //llvm::ReturnInst::Create(gen.context, runBlock);
+    gen.builder.CreateRetVoid();
 
 #if DEBUG_GENERATOR
     std::cerr << "Code is generated.\n";

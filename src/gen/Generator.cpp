@@ -632,34 +632,44 @@ llvm::Value* Generator::parse(ast::VariableDeclaration *node, Generation &gen){
 llvm::Value* Generator::parse(ast::IfExpression *node, Generation &gen){
     llvm::Value *condV = parseNode(node->cond, gen);
 
-    llvm::Function *parent = ((llvm::BasicBlock*)*gen.scope)->getParent();
-    llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(gen.context, "then", parent);
+    llvm::Function *currentFunction = gen.builder.GetInsertBlock()->getParent();
+
+    llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(gen.context, "if", currentFunction);
     llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(gen.context, "else");
     llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(gen.context, "endif");
 
-    llvm::BranchInst::Create(thenBB, elseBB, condV);
+    gen.builder.CreateCondBr(condV, thenBB, elseBB);
+
     gen.pushBlock(thenBB);
     llvm::Value *thenValue = parse(node->thenBlk, gen);
-    llvm::BranchInst::Create(mergeBB);
+    gen.builder.CreateBr(mergeBB);
     gen.popBlock();
+    thenBB = gen.builder.GetInsertBlock();
 
-    llvm::Value *elseValue = NULL;
-    parent->getBasicBlockList().push_back(elseBB);
+
+    currentFunction->getBasicBlockList().push_back(elseBB);
     gen.pushBlock(elseBB);
+    llvm::Value *elseValue = NULL;
     if(node->elseBlk != NULL){
         elseValue = parse(node->elseBlk, gen);
     }
+    gen.builder.CreateBr(mergeBB);
     gen.popBlock();
+    elseBB = gen.builder.GetInsertBlock();
 
-    parent->getBasicBlockList().push_back(mergeBB);
 
-    if(node->elseBlk == NULL || node->elseBlk->getType() != node->thenBlk->getType()){
+    currentFunction->getBasicBlockList().push_back(mergeBB);
+    gen.pushBlock(mergeBB);
+    if(node->elseBlk == NULL || node->elseBlk->getType() != node->thenBlk->getType() ||
+            *node->elseBlk->getType() == gen.voidType){
+        std::cerr << "skip phi value" << std::endl;
         node->setType(gen.voidType);
         return NULL;
     }
     else{
+        std::cerr << "generating phi value" << std::endl;
         node->setType(*node->elseBlk->getType());
-        llvm::PHINode *phiValue = llvm::PHINode::Create(*node->getType(), 2);
+        llvm::PHINode *phiValue = gen.builder.CreatePHI(*node->getType(), 2);
         phiValue->addIncoming(thenValue, thenBB);
         phiValue->addIncoming(elseValue, elseBB);
         return phiValue;
@@ -677,10 +687,6 @@ llvm::Value* Generator::parse(ast::Comparison *node, Generation &gen){
     ast::Expression *left = *it;
     llvm::Value *result = NULL;
     llvm::Value *valueComp = NULL;
-
-    //llvm::Value *valueLeft = parseNode(*it, gen);
-    //
-    //core::Type *type = (*it)->getType();
 
     for(++it; it != node->expressions->end(); it++){
         std::list<ast::Expression*> *args = new std::list<ast::Expression*>();
