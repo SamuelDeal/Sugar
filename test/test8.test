@@ -1,0 +1,7 @@
+Bool a = 2 == 2
+echo a
+Int b = 1 + 1
+Int c = 2
+echo b == c == 2
+echo c == b == 3
+
