@@ -41,8 +41,8 @@ protected:
     core::Type floatType;
     core::Type voidType;
 
-    llvm::Constant *trueConst;
-    llvm::Constant *falseConst;
+    llvm::ConstantInt *trueConst;
+    llvm::ConstantInt *falseConst;
     llvm::Constant *intZero;
 
     friend class Generator;

@@ -34,7 +34,7 @@ Generator::~Generator(){
 
 GeneratedCode* Generator::generate(ast::Block *block){
 #if DEBUG_GENERATOR
-    std::cerr << "\n========= SAM!!! Generating code... =========\n";
+    std::cerr << "\n========= Generating code... =========\n";
 #endif
     Generation *generation = new Generation();
     Generation &gen = *generation;
@@ -348,6 +348,11 @@ llvm::Value* Generator::parse(ast::Assignment *node, Generation &gen){
     if(value == NULL){
         return NULL;
     }
+    if(*node->right->getType() != var->getType()){
+        std::cout << "Uncompatible types in assigment  " << node->right->getType()->getName()
+                  << " to " << var->getType().getName() << std::endl;
+        return NULL;
+    }
     llvm::StoreInst *assign = gen.builder.CreateStore(value, *var);
     return assign;
 }
@@ -428,15 +433,16 @@ llvm::Value* Generator::parse(ast::FunctionCall *node, Generation &gen){
     }
     else{
         for(std::list<Function *>::iterator it = functions.begin(); it != functions.end(); it++){
-            if((*it)->match(types, gen.castGraph)){
-                node->setType(*(*it)->getReturnType());
+            Function *func = *it;
+            if(func->match(types, gen.castGraph)){
+                node->setType(*func->getReturnType());
                 //FIXME: match & casts
                 llvm::Value *call;
-                if((*it)->isNative()){
-                    call = CALL_MEMBER_FN(*this, (*it)->getNative())(args, gen);
+                if(func->isNative()){
+                    call = CALL_MEMBER_FN(*this, func->getNative())(args, gen);
                 }
                 else{
-                    call = gen.builder.CreateCall(**it, makeArrayRef(args));
+                    call = gen.builder.CreateCall(*func, makeArrayRef(args));
                 }
 #if DEBUG_GENERATOR
                 std::cerr << "Creating method call " << std::endl;
@@ -592,7 +598,7 @@ llvm::Value* Generator::parse(ast::VariableDeclaration *node, Generation &gen){
     node->setType(*type);
     if(gen.scope->isGlobal()){
 #if DEBUG_GENERATOR
-        std::cerr << "Creating global variable declaration " << node->type->name << " " << node->id->name << std::endl;
+        std::cerr << "Creating global variable declaration " << *node->type->name << " " << *node->id->name << std::endl;
 #endif
         llvm::GlobalVariable *var = new llvm::GlobalVariable(*gen.module, *type, false,
             llvm::GlobalValue::InternalLinkage, 0, *node->id->name);
@@ -697,7 +703,7 @@ llvm::Value* Generator::parse(ast::Comparison *node, Generation &gen){
             result = valueComp;
         }
         else{
-            result = gen.builder.CreateNSWAdd(result, valueComp);
+            result = gen.builder.CreateAnd(result, valueComp);
         }
     }
     return result;

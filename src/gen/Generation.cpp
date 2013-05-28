@@ -4,12 +4,12 @@ namespace sugar {
 namespace gen {
 
 Generation::Generation() :
-    boolType("Bool", llvm::Type::getInt8Ty(context)),
+    boolType("Bool", llvm::IntegerType::get(context, 1)),
     intType("Int", llvm::Type::getInt64Ty(context)),
     floatType("Float", llvm::Type::getDoubleTy(context)),
     voidType("Void", llvm::Type::getVoidTy(context)),
-    trueConst(llvm::ConstantInt::get(context, llvm::APInt(8, 1))),
-    falseConst(llvm::ConstantInt::get(context, llvm::APInt(8, 0))),
+    trueConst(llvm::ConstantInt::getTrue(context)),
+    falseConst(llvm::ConstantInt::getFalse(context)),
     intZero(llvm::Constant::getNullValue(intType)),
     rootScope(NULL, NULL),
     scope(&rootScope),
