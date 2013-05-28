@@ -77,7 +77,7 @@ void yyIndentCheck();
 #define YY_DECL extern "C" int yylex()
 
 #if defined(DEBUG_LEXER) && DEBUG_LEXER
-#define LOG_LEXER(str, ...) fprintf(stderr, str, ##__VA_ARGS__)
+#define LOG_LEXER(str, ...) fprintf(stderr, str "\n", ##__VA_ARGS__)
 #else
 #define LOG_LEXER(str, ...)
 #endif
@@ -88,7 +88,7 @@ void yyIndentCheck();
         g_indent_context.style = ContextIndentInfo::UNDEFINED; \
         /*yylloc.first_line = 1;*/ \
         /*yylloc.first_column = 1;*/ \
-        LOG_LEXER("\nEntering Indent state\n"); \
+        LOG_LEXER("Entering Indent state"); \
         BEGIN(yy_state_indent); \
     }
 
@@ -182,6 +182,7 @@ static void lexer_input(char *buf, int *result, int max);
 }
 
 <yy_state_indent>" "+            {
+    LOG_LEXER("spaces found!!!");
     yySeachLParent = false;
     if(g_indent_context.style == ContextIndentInfo::UNDEFINED){
         g_indent_context.style = ContextIndentInfo::SPACE;
@@ -227,7 +228,7 @@ static void lexer_input(char *buf, int *result, int max);
     yySeachLParent = false;
     g_indent_count = 0;
     BEGIN(yy_state_indent);
-    LOG_LEXER("\nEntering Indent state\n");
+    LOG_LEXER("Entering Indent state");
     if(!yySkipNL){
         yySkipNL = true;
         yyReturn(TOK_NL);
@@ -303,7 +304,7 @@ void yyIndentCheck(){
     if(YY_START != yy_state_indent){
         return;
     }
-    LOG_LEXER("\nLeaving Indent state\n");
+    LOG_LEXER("Leaving Indent state");
     BEGIN(INITIAL);
     if(yyIndentSensitiveStack.empty() || !yyIndentSensitiveStack.top()){
         return;

@@ -151,4 +151,41 @@ OTHER_FILES += \
     example2.txt \
     README.md \
     src/lexer.l \
-    src/parser.y
+    src/parser.y \
+    test/test9.test \
+    test/test9.expected \
+    test/test8.test \
+    test/test8.expected \
+    test/test7.test \
+    test/test7.expected \
+    test/test6.test \
+    test/test6.expected \
+    test/test5.test \
+    test/test5.expected \
+    test/test4.test \
+    test/test4.expected \
+    test/test3.test \
+    test/test3.expected \
+    test/test2.test \
+    test/test2.expected \
+    test/test1.test \
+    test/test010.test \
+    test/test010.expected \
+    test/test009.test \
+    test/test009.expected \
+    test/test008.test \
+    test/test008.expected \
+    test/test007.test \
+    test/test007.expected \
+    test/test006.test \
+    test/test006.expected \
+    test/test005.test \
+    test/test005.expected \
+    test/test004.test \
+    test/test004.expected \
+    test/test003.test \
+    test/test003.expected \
+    test/test002.test \
+    test/test002.expected \
+    test/test001.test \
+    test/test001.expected

@@ -32,11 +32,9 @@ bool AbstractFunction::match(const std::list<const Type *> &argsTypes, const Cas
 
     while(asked != argsTypes.end()){
         if(mine == _argsTypes.end()){
-            std::cerr << "No more types !" << std::endl;
             return false;
         }
         if(*mine != *asked){
-            std::cerr << "different types ! expecting" << (*mine)->getName() << ", given: " << (*asked)->getName() << std::endl;
             return false;
         }
         ++asked;

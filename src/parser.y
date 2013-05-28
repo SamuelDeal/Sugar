@@ -101,7 +101,7 @@ using namespace sugar;
 %type <stmt> stmt var_decl func_decl program_stmt action_stmt
 %type <args_decl> func_decl_args
 %type <expr_list> func_call_args comp_eq
-%type <expr> value expr func_call if if_else
+%type <expr> value expr func_call if_expr if if_else
 %type <block> program block_stmts program_stmts block
 
 /* Operator precedence for mathematical operators */
@@ -196,26 +196,32 @@ var_decl        : typename ident { $$ = new ast::VariableDeclaration($1, $2); }
 
 block           : tlbrace block_stmts TRBRACE { $$ = $2; }
                 | tlbrace TRBRACE { $$ = new ast::Block(); }
-                | TOK_NL TOK_INDENT block_stmts TOK_OUTDENT { $$ = $3; yyIndentSensitiveStack.pop(); LOG_LEXER("Indent sensitive OFF\n"); }
+                | TOK_NL TOK_INDENT block_stmts TOK_OUTDENT { $$ = $3; yyIndentSensitiveStack.pop(); LOG_LEXER("Indent sensitive OFF"); }
                 ;
 
-tlbrace         : TLBRACE { yyIndentSensitiveStack.push(false); LOG_LEXER("Indent sensitive OFF\n"); }
+tlbrace         : TLBRACE { yyIndentSensitiveStack.push(false); LOG_LEXER("Indent sensitive OFF"); }
                 ;
 
 func_decl       : typename ident TOK_NO_SPACE TLPAREN func_decl_args TRPAREN block { $$ = new ast::FunctionDeclaration($1, $2, $5, $7); }
                 ;
 
-func_decl_args  : /*blank*/  { $$ = new std::list<ast::VariableDeclaration*>(); yyIndentSensitiveStack.push(true); LOG_LEXER("Indent sensitive ON\n"); }
-                | var_decl { $$ = new std::list<ast::VariableDeclaration*>(); $$->push_back($<var_decl>1); yyIndentSensitiveStack.push(true); LOG_LEXER("Indent sensitive ON\n"); }
-                | func_decl_args TCOMMA var_decl { $1->push_back($<var_decl>3); yyIndentSensitiveStack.push(true); LOG_LEXER("Indent sensitive ON\n"); }
+func_decl_args  : /*blank*/  { $$ = new std::list<ast::VariableDeclaration*>(); yyIndentSensitiveStack.push(true); LOG_LEXER("Indent sensitive ON"); }
+                | var_decl { $$ = new std::list<ast::VariableDeclaration*>(); $$->push_back($<var_decl>1); yyIndentSensitiveStack.push(true); LOG_LEXER("Indent sensitive ON"); }
+                | func_decl_args TCOMMA var_decl { $1->push_back($<var_decl>3); yyIndentSensitiveStack.push(true); LOG_LEXER("Indent sensitive ON"); }
                 ;
 
-if              : TIF expr block %prec IF_ALONE { $$ = new ast::IfExpression($2, $3); }
-                | action_stmt TIF expr { ast::Block* tmp = new ast::Block(); tmp->stmts.push_back($<stmt>1); $$ = new ast::IfExpression($3, tmp); }
+if_expr         : TIF expr { $$ = $2; yyIndentSensitiveStack.push(true); LOG_LEXER("Indent sensitive ON"); }
                 ;
 
-if_else         : TIF expr block TELSE block { $$ = new ast::IfExpression($2, $3, $5); }
-                | TIF expr block sep TELSE block %prec IF_ELSE { $$ = new ast::IfExpression($2, $3, $6); }
+if              : if_expr block %prec IF_ALONE { $$ = new ast::IfExpression($1, $2); }
+                | action_stmt if_expr { ast::Block* tmp = new ast::Block(); tmp->stmts.push_back($<stmt>1); $$ = new ast::IfExpression($2, tmp); }
+                ;
+
+if_else         : if_expr block else block { $$ = new ast::IfExpression($1, $2, $4); }
+                | if_expr block sep else block %prec IF_ELSE { $$ = new ast::IfExpression($1, $2, $5); }
+                ;
+
+else            : TELSE { yyIndentSensitiveStack.push(true); LOG_LEXER("Indent sensitive ON"); }
                 ;
 
 value           : TINTEGER { $$ = new ast::Constant(atoll($1->c_str())); delete $1; }
