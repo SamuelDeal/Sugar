@@ -36,7 +36,7 @@ src/parser.hpp: src/parser.cpp
 src/lexer.hpp: src/lexer.l src/parser.hpp
 	flex -o $@ $^ 
 
-%.o: %.cpp
+%.o: %.cpp src/config.h
 	$(CC) -ggdb -c $(CPPFLAGS) -o $@ $<
 	
 src/sugar.o: src/lexer.hpp
@@ -57,7 +57,18 @@ sugarc: src/sugarc.o $(OBJS)
 %.result: %.test sugar
 	./sugar $< > $@ || echo "error"
 
-test: sugar sugari sugarc
+test: sugari 
+	@rm -rf test/results
+	@mkdir test/results	
+	@for t in $(TESTS); do \
+		test=$$(echo "$$t" | sed "s/\\.\\/test\\///"); \
+		echo -n "  $$test:"; \
+		./sugari "test/$$test.test" > "test/results/$$test.sugari.output" 2> /dev/null && \
+		diff --strip-trailing-cr "test/results/$$test.sugari.output" "test/$$test.expected" > /dev/null && \
+		/bin/echo -e "\e[0;32m ok \033[m" || /bin/echo -e "\e[1;31m fail \033[m"; \
+	done
+
+tests: sugar sugari sugarc
 	@rm -rf test/results
 	@mkdir test/results
 	@echo "Testing sugar:"
@@ -80,7 +91,7 @@ test: sugar sugari sugarc
 	@for t in $(TESTS); do \
 		test=$$(echo "$$t" | sed "s/\\.\\/test\\///"); \
 		echo -n "  $$test:"; \
-		./sugarc "test/$$test.test" "test/results/$$test.sugarc.exec" 2> /dev/null && \
+		./sugarc "test/$$test.test" "test/results/$$test.sugarc.exec" > /dev/null 2> /dev/null && \
 		test/results/$$test.sugarc.exec > "test/results/$$test.sugarc.output" && \
 		diff --strip-trailing-cr "test/results/$$test.sugarc.output" "test/$$test.expected" > /dev/null && \
 		/bin/echo -e "\e[0;32m ok \033[m" || /bin/echo -e "\e[1;31m fail \033[m"; \

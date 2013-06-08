@@ -49,7 +49,8 @@ bool yySkipNL = true;
 std::stack<bool> yyIndentSensitiveStack;
 std::queue<int> yyTokenQueue;
 std::queue<std::string *> yyIdQueue;
-bool yySeachLParent = false;
+bool yySpaceSensitive = false;
+bool yyNLFound = false;
 
 void yyQueueTokens(int count, ...){
     va_list ap;
@@ -77,7 +78,7 @@ void yyIndentCheck();
 #define YY_DECL extern "C" int yylex()
 
 #if defined(DEBUG_LEXER) && DEBUG_LEXER
-#define LOG_LEXER(str, ...) fprintf(stderr, str "\n", ##__VA_ARGS__)
+#define LOG_LEXER(str, ...) fprintf(stderr, "\n" str "\n", ##__VA_ARGS__)
 #else
 #define LOG_LEXER(str, ...)
 #endif
@@ -123,6 +124,11 @@ extern FILE * yyin;
 #define VA_NARGS(...) VA_NARGS_IMPL(X,##__VA_ARGS__, 4, 3, 2, 1, 0)
 
 #define yyPopQueue() \
+    if(yyNLFound){ \
+        LOG_LEXER("yyPopQueue: yyNLFOund = false"); \
+        yyNLFound = false; \
+        return TOK_END_INSTR; \
+    } \
     if(!yyTokenQueue.empty()){ \
         int result = yyTokenQueue.front(); \
         std::string *id = yyIdQueue.front(); \
@@ -130,6 +136,11 @@ extern FILE * yyin;
         yyIdQueue.pop(); \
         if(EOF == result){ \
             yyterminate(); \
+        } \
+        else if(TOK_OUTDENT == result) { \
+            LOG_LEXER("yyPopQueue OUTDENT: yyNLFOund = true"); \
+            yyNLFound = true; \
+            return result; \
         } \
         else if(id == NULL){ \
             yylval.token = result; \
@@ -148,7 +159,6 @@ extern FILE * yyin;
 #define yyReturnId(t) \
         yyQueueTokenId(t, new std::string(yytext, yyleng)); \
         yyPopQueue();
-
 
 #if INTERACTIVE_INPUT && ((defined(LIBREADLINE) && LIBREADLINE) || (defined(LIBEDIT) && LIBEDIT))
 
@@ -177,13 +187,12 @@ static void lexer_input(char *buf, int *result, int max);
     yyReturn();
 
 <yy_state_indent>[ \t]*\r\n|[ \t]*\r|[ \t]*\n   { /* ignoring blank line */
-    yySeachLParent = false;
+    yySpaceSensitive = false;
     g_indent_count = 0;
 }
 
 <yy_state_indent>" "+            {
-    LOG_LEXER("spaces found!!!");
-    yySeachLParent = false;
+    yySpaceSensitive = false;
     if(g_indent_context.style == ContextIndentInfo::UNDEFINED){
         g_indent_context.style = ContextIndentInfo::SPACE;
         g_indent_context.spaceSize = yyleng;
@@ -208,7 +217,7 @@ static void lexer_input(char *buf, int *result, int max);
 }
 
 <yy_state_indent>\t+             {
-    yySeachLParent = false;
+    yySpaceSensitive = false;
     if(g_indent_context.style == ContextIndentInfo::UNDEFINED){
             g_indent_context.style = ContextIndentInfo::TAB;
     }
@@ -225,44 +234,49 @@ static void lexer_input(char *buf, int *result, int max);
 }
 
 \r\n|\r|\n                  {
-    yySeachLParent = false;
+    yySpaceSensitive = false;
     g_indent_count = 0;
     BEGIN(yy_state_indent);
-    LOG_LEXER("Entering Indent state");
+    LOG_LEXER("NL: Entering Indent state");
     if(!yySkipNL){
         yySkipNL = true;
-        yyReturn(TOK_NL);
+        //if(yyIndentSensitiveStack.empty() || !yyIndentSensitiveStack.top()){
+            LOG_LEXER("NL: yyNLFound = true");
+            yyNLFound = true;
+        //}
     }
-    yyReturn();
+    if(!yyNLFound){
+        yyReturn();
+    }
 }
-[ \t]                       { yySeachLParent = false; };
-"return"                    { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturn(TRETURN); }
-"if"                        { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturn(TIF); }
-"else"                      { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturn(TELSE); }
-"true"                      { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturn(TTRUE); }
-"false"                     { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturn(TFALSE); }
-[A-Z][a-zA-Z0-9_\?]*        { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturnId(TTYPENAME); }
-[a-z_][a-zA-Z0-9_\?!]*      { yySkipNL = false; yySeachLParent = true; yyIndentCheck(); yyReturnId(TIDENTIFIER); }
-[0-9]+\.[0-9]*              { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturnId(TDOUBLE); }
-[0-9]+                      { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturnId(TINTEGER); }
-"="                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TEQUAL); }
-"=="                        { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturnId(TCEQ); }
-"!="                        { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCNE); }
-"<"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCLT); }
-"<="                        { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCLE); }
-">"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCGT); }
-">="                        { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCGE); }
-"."                         { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturn(TDOT); }
-","                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TCOMMA); }
-"+"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturnId(TPLUS); }
-"-"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturnId(TMINUS); }
-"*"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturnId(TMUL); }
-"/"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturnId(TDIV); }
-";"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TSEMICOL); }
+[ \t]                       { yySpaceSensitive = false; };
+"return"                    { yySkipNL = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TRETURN); }
+"if"                        { yySkipNL = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TIF); }
+"else"                      { yySkipNL = false; LOG_LEXER("else:yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TELSE); }
+"true"                      { yySkipNL = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TTRUE); }
+"false"                     { yySkipNL = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TFALSE); }
+[A-Z][a-zA-Z0-9_\?]*        { yySkipNL = false; yySpaceSensitive = false; yyIndentCheck(); yyReturnId(TTYPENAME); }
+[a-z_][a-zA-Z0-9_\?!]*      { yySkipNL = false; yySpaceSensitive = true; yyIndentCheck(); yyReturnId(TIDENTIFIER); }
+[0-9]+\.[0-9]*              { yySkipNL = false; yySpaceSensitive = false; yyIndentCheck(); yyReturnId(TDOUBLE); }
+[0-9]+                      { yySkipNL = false; yySpaceSensitive = false; yyIndentCheck(); yyReturnId(TINTEGER); }
+"="                         { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TEQUAL); }
+"=="                        { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturnId(TCEQ); }
+"!="                        { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TCNE); }
+"<"                         { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TCLT); }
+"<="                        { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TCLE); }
+">"                         { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TCGT); }
+">="                        { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TCGE); }
+"."                         { yySkipNL = false; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TDOT); }
+","                         { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TCOMMA); }
+"+"                         { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturnId(TPLUS); }
+"-"                         { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturnId(TMINUS); }
+"*"                         { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturnId(TMUL); }
+"/"                         { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturnId(TDIV); }
+";"                         { yySkipNL = true; LOG_LEXER(";: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TOK_END_INSTR); }
 "("                         {
     yySkipNL = true;
-    bool searchLParent = yySeachLParent;
-    yySeachLParent = false;
+    bool searchLParent = yySpaceSensitive;
+    yySpaceSensitive = false;
     yyIndentCheck();
     if(searchLParent){
         yyReturn(TOK_NO_SPACE, TLPAREN);
@@ -271,13 +285,15 @@ static void lexer_input(char *buf, int *result, int max);
         yyReturn(TLPAREN);
     }
 }
-")"                         { yySkipNL = false; yySeachLParent = false; yyIndentCheck(); yyReturn(TRPAREN); }
-"{"                         { yySkipNL = true; yySeachLParent = false; yyIndentCheck(); yyReturn(TLBRACE); }
+")"                         { yySkipNL = false; /*LOG_LEXER("{: yyNLFOund = false"); yyNLFound = false;*/ yySpaceSensitive = false; yyIndentCheck(); yyReturn(TRPAREN); }
+"{"                         { yySkipNL = true; /*LOG_LEXER("}: yyNLFOund = false"); yyNLFound = false;*/ yySpaceSensitive = false; yyIndentCheck(); yyReturn(TLBRACE); }
 "}"                         {
-    yySeachLParent = false;
+    yySpaceSensitive = false;
+    //yyNLFound = false;
+    //LOG_LEXER("}: yyNLFound = false");
     yyIndentCheck();
     if(!yySkipNL){
-        yyReturn(TOK_IMPLICIT_END_INSTR, TRBRACE);
+        yyReturn(TOK_END_INSTR, TRBRACE);
     }
     else{
         yySkipNL = false;
@@ -287,12 +303,11 @@ static void lexer_input(char *buf, int *result, int max);
 
 <*><<EOF>>                  {
     if(!yySkipNL){
-        yyQueueToken(TOK_IMPLICIT_END_INSTR);
+        yyQueueToken(TOK_END_INSTR);
     }
     while(g_indent_context.indentCount > 0){
         --g_indent_context.indentCount;
         yyQueueToken(TOK_OUTDENT);
-        yyQueueToken(TOK_IMPLICIT_END_INSTR);
     }
     yyReturn(EOF);
 }
@@ -304,7 +319,7 @@ void yyIndentCheck(){
     if(YY_START != yy_state_indent){
         return;
     }
-    LOG_LEXER("Leaving Indent state");
+    LOG_LEXER("IndentChack: Leaving Indent state");
     BEGIN(INITIAL);
     if(yyIndentSensitiveStack.empty() || !yyIndentSensitiveStack.top()){
         return;
@@ -312,9 +327,11 @@ void yyIndentCheck(){
     while(g_indent_count < g_indent_context.indentCount){
         --g_indent_context.indentCount;
         yyQueueToken(TOK_OUTDENT);
-        yyQueueToken(TOK_IMPLICIT_END_INSTR);
+        LOG_LEXER("IndentCheck: OUTDENT + yyNLFOund = true");
     }
     if(g_indent_count > g_indent_context.indentCount){
+        yyNLFound = false;
+        LOG_LEXER("IndentCheck: Indent found + yyNLFound = false");
         yyQueueToken(TOK_INDENT);
         ++g_indent_context.indentCount;
 #if INDENT_FAIL_ON_ERROR

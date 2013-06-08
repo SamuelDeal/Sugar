@@ -1,8 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define DEBUG_LEXER 0
-#define DEBUG_PARSER 0
+#define DEBUG_LEXER 1
+#define DEBUG_PARSER 1
 #define DEBUG_GENERATOR 0
 #define DEBUG_IR 0
 
