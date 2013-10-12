@@ -25,7 +25,7 @@ clean: clean_tmp
 	@echo "all cleaned"
 	
 clean_tmp:
-	@$(RM) -rf $(OBJS) $(DEPS) src/parser.cpp src/lexer.hpp src/parser.hpp src/parser.output src/parser.dot test/results src/sugar.o src/sugari.o src/sugarc.o
+	@$(RM) -rf $(OBJS) $(DEPS) src/parser.cpp src/lexer.impl.hpp src/lexer.h src/parser.hpp src/parser.output src/parser.dot test/results src/sugar.o src/sugari.o src/sugarc.o
 	@echo "temporary files cleaned"
 
 src/parser.cpp: src/parser.y
@@ -33,17 +33,19 @@ src/parser.cpp: src/parser.y
 	
 src/parser.hpp: src/parser.cpp
 	
-src/lexer.hpp: src/lexer.l src/parser.hpp
-	flex -o $@ $^ 
+src/lexer.impl.hpp: src/lexer.l
+	flex --header-file=src/lexer.h -o $@ $^ 
+	
+src/lexer.h: src/lexer.impl.hpp
 
 %.o: %.cpp src/config.h
 	$(CC) -ggdb -c $(CPPFLAGS) -o $@ $<
 	
-src/sugar.o: src/lexer.hpp
+src/sugar.o: src/lexer.impl.hpp src/parser.hpp
 
-src/sugari.o: src/lexer.hpp
+src/sugari.o: src/lexer.impl.hpp src/parser.hpp
 
-src/sugarc.o: src/lexer.hpp
+src/sugarc.o: src/lexer.impl.hpp src/parser.hpp
 
 sugar: src/sugar.o $(OBJS)
 	$(CC) -ggdb -o $@ $^ $(LIBS) $(LDFLAGS)

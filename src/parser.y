@@ -8,39 +8,32 @@
 
 #include "ast/all.h"
 
+#define YY_HEADER_EXPORT_START_CONDITIONS 1
+
+extern "C"  {
+
+#include "lexer.h"
+
+}
+
 using namespace sugar;
 
-extern ast::Block *programBlock; /* the top level root node of our final AST */
+extern ast::Block *programBlock;
+#include "lexer_ctx.h"
 
-//	extern int yylex();
-//	void yyerror(const char *s) { std::printf("Error: %s\n", s);std::exit(1); }
-
-
-#if defined(DEBUG_LEXER) && DEBUG_LEXER
-#define LOG_LEXER(str, ...) fprintf(stderr, str, ##__VA_ARGS__)
-#else
-#define LOG_LEXER(str, ...)
-#endif
-
-
-
-extern "C" int yylex();
-extern "C" FILE *yyin;
-extern "C" std::stack<bool> yyIndentSensitiveStack;
-extern "C" bool yyNLFound;
-
+extern LexerContext lexerCtx;
 void yyerror(const char *s);
 extern void onMainStatement(ast::Statement *);
 
 
-#define lexIndentOn() \
-        yyIndentSensitiveStack.push(true); \
+#define lexIndentOn()
+        /*yyIndentSensitiveStack.push(true); \
         LOG_LEXER("Indent sensitive ON"); \
-        yyNLFound = false;
+        yyNLFound = false; */
 
-#define lexIndentOff() \
-        yyIndentSensitiveStack.push(false); \
-        LOG_LEXER("Indent sensitive OFF");
+#define lexIndentOff()
+        /*yyIndentSensitiveStack.push(false); \
+        LOG_LEXER("Indent sensitive OFF");*/
 
 ast::Operator* makeOperatorCall(ast::Expression *subject, int operatorId, ast::Expression *arg1){
     std::list<ast::Expression *> *args = new std::list<ast::Expression *>();
@@ -89,7 +82,7 @@ using namespace sugar;
 
 %debug
 %error-verbose
-%glr-parser
+/*%glr-parser*/
 
 /* Define our terminal symbols (tokens). This should
    match our tokens.l lex file. We also define the node type
@@ -144,6 +137,7 @@ program         : program_stmts { }
 
 program_stmts   : program_stmt { onMainStatement($<stmt>1); }
                 | program_stmts program_stmt { onMainStatement($<stmt>2); }
+                | program_stmts TOK_END_INSTR {}
                 ;
 
 block_stmts     : stmt TOK_END_INSTR { $$ = new ast::Block(); $$->stmts.push_back($<stmt>1); }
@@ -206,28 +200,24 @@ var_decl        : typename ident { $$ = new ast::VariableDeclaration($1, $2); }
                 | typename ident TEQUAL expr { $$ = new ast::VariableDeclaration($1, $2, $4); }
                 ;
 
-block           : tlbrace block_stmts TRBRACE { $$ = $2; }
-                | tlbrace TRBRACE { $$ = new ast::Block(); }
-                | TOK_INDENT block_stmts TOK_OUTDENT { $$ = $2; yyIndentSensitiveStack.pop(); LOG_LEXER("Indent sensitive OFF"); }
-                ;
-
-tlbrace         : TLBRACE { lexIndentOff(); }
-                | TOK_INDENT TLBRACE { lexIndentOff(); }
+block           : TLBRACE block_stmts TRBRACE { $$ = $2; }
+                | TLBRACE TRBRACE { $$ = new ast::Block(); }
+                | TOK_INDENT block_stmts TOK_OUTDENT { $$ = $2; }
                 ;
 
 func_decl       : typename ident TOK_NO_SPACE TLPAREN func_decl_args TRPAREN block { $$ = new ast::FunctionDeclaration($1, $2, $5, $7); }
                 ;
 
-func_decl_args  : /*blank*/  { $$ = new std::list<ast::VariableDeclaration*>(); lexIndentOn(); }
-                | var_decl { $$ = new std::list<ast::VariableDeclaration*>(); $$->push_back($<var_decl>1); lexIndentOn(); }
-                | func_decl_args TCOMMA var_decl { $1->push_back($<var_decl>3); lexIndentOn(); }
+func_decl_args  : /*blank*/  { $$ = new std::list<ast::VariableDeclaration*>(); lexStartBlock(); }
+                | var_decl { $$ = new std::list<ast::VariableDeclaration*>(); $$->push_back($<var_decl>1); lexStartBlock(); }
+                | func_decl_args TCOMMA var_decl { $1->push_back($<var_decl>3); lexStartBlock(); }
                 ;
 
 if_expr         : TIF expr { $$ = $2; lexIndentOn(); }
                 ;
 
 if              : if_expr block %prec IF_ALONE { $$ = new ast::IfExpression($1, $2); }
-                | action_stmt if_expr { ast::Block* tmp = new ast::Block(); tmp->stmts.push_back($<stmt>1); $$ = new ast::IfExpression($2, tmp); yyIndentSensitiveStack.pop(); LOG_LEXER("Indent sensitive OFF");}
+                | action_stmt if_expr { ast::Block* tmp = new ast::Block(); tmp->stmts.push_back($<stmt>1); $$ = new ast::IfExpression($2, tmp); }
                 ;
 
 if_else         : if_expr block else block { $$ = new ast::IfExpression($1, $2, $4); }

@@ -9,7 +9,7 @@
 
 #include "config.h"
 #define INTERACTIVE_INPUT 0
-#include "lexer.hpp"
+#include "lexer.impl.hpp"
 
 #include "gen/Generator.h"
 #include "gen/GeneratedCode.h"

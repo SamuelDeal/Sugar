@@ -140,7 +140,8 @@ HEADERS += \
     src/ast/Operator.h \
     src/ast/TypeIdentifier.h \
     src/config.h \
-    src/utils.h
+    src/utils.h \
+    src/lexer_ctx.h
 
 OTHER_FILES += \
     parser.y \

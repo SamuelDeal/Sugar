@@ -11,6 +11,8 @@ parser.output
 parser.output2
 parser.ps
 lexer.hpp
+lexer.impl.hpp
+lexer.h
 sugari
 sugarc
 test/results

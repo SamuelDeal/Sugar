@@ -1,0 +1,5 @@
+Int fn()
+	echo 8
+	5
+
+fn

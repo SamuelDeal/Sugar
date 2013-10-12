@@ -3,7 +3,7 @@
 
 #include "config.h"
 #define INTERACTIVE_INPUT 1
-#include "lexer.hpp"
+#include "lexer.impl.hpp"
 
 #include "gen/Interpreter.h"
 #include "gen/GeneratedCode.h"

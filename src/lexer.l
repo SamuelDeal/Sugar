@@ -2,9 +2,6 @@
 #include <string>
 #include <iostream>
 #include <string.h>
-#include <queue>
-#include <stdarg.h>
-#include <stack>
 #include "config.h"
 
 #if ! defined YYLTYPE && ! defined YYLTYPE_IS_DECLARED
@@ -27,52 +24,12 @@ typedef struct YYLTYPE
 #ifndef INDENT_ALLOW_MIXED
 #define INDENT_ALLOW_MIXED 0
 #endif
-#ifndef INDENT_FAIL_ON_ERROR
-#define INDENT_FAIL_ON_ERROR 0
-#endif
-struct ContextIndentInfo {
-    enum EStyle {
-        UNDEFINED,
-        SPACE,
-        TAB
-    };
 
-    int spaceSize;
-    unsigned int indentCount;
-    EStyle style;
-};
-ContextIndentInfo g_indent_context;
-unsigned int g_indent_count = 0;
+#include "lexer_ctx.h"
 
-extern const char* g_current_filename;
-bool yySkipNL = true;
-std::stack<bool> yyIndentSensitiveStack;
-std::queue<int> yyTokenQueue;
-std::queue<std::string *> yyIdQueue;
-bool yySpaceSensitive = false;
-bool yyNLFound = false;
+LexerContext lexerCtx;
 
-void yyQueueTokens(int count, ...){
-    va_list ap;
-    va_start(ap, count);
-    for (int i = 0; i < count; i++){
-        yyTokenQueue.push(va_arg(ap, int));
-        yyIdQueue.push(NULL);
-    }
-    va_end(ap);
-}
 
-void yyQueueToken(int token){
-    yyTokenQueue.push(token);
-    yyIdQueue.push(NULL);
-}
-
-void yyQueueTokenId(int token, std::string *id) {
-    yyTokenQueue.push(token);
-    yyIdQueue.push(id);
-}
-
-void yyIndentCheck();
 
 /* Don't mangle yylex please! */
 #define YY_DECL extern "C" int yylex()
@@ -83,34 +40,53 @@ void yyIndentCheck();
 #define LOG_LEXER(str, ...)
 #endif
 
+
+#define lexPushState(state) { \
+    int old = YY_START; \
+    LOG_LEXER(" adding state: %d", __LINE__); \
+    yy_push_state(state); \
+    LOG_LEXER(" ++ state added: %d (from %d)", state, old); \
+}
+
+
+#define lexPopState() { \
+    int old = YY_START; \
+    LOG_LEXER(" poping state: %d", __LINE__); \
+    yy_pop_state(); \
+    LOG_LEXER(" -- state poped: %d, (current: %d)", old, YY_START); \
+}
+
 #define YY_USER_INIT { \
-        g_indent_context.spaceSize = -1; \
-        g_indent_context.indentCount = 0; \
-        g_indent_context.style = ContextIndentInfo::UNDEFINED; \
-        /*yylloc.first_line = 1;*/ \
-        /*yylloc.first_column = 1;*/ \
+        lexerCtx.indentContext.spaceSize = -1; \
+        lexerCtx.indentContext.style = IndentInfo::UNDEFINED; \
+        lexerCtx.lineIndents = 0; \
+        lexerCtx.indents.push(0); \
+        lexerCtx.eof = false; \
         LOG_LEXER("Entering Indent state"); \
-        BEGIN(yy_state_indent); \
+        lexPushState(lex_state_newline); \
     }
-
-int yycolumn = 1;
-void set_yycolumn(int val) {
-    yycolumn = val;
-    //yylloc.first_column = yycolumn;
-    //yylloc.last_column = yycolumn + yyleng - 1;
-}
-
-#define YY_USER_ACTION { \
-    /*yylloc.first_line = yylloc.last_line = yylineno;*/ \
-    set_yycolumn(yycolumn); \
-    yycolumn += yyleng; \
-}
 
 void lyyerror(const char *s){
     //fprintf(stderr, "%s: %d:%d: %s: %s\n", g_current_filename, yylineno, yycolumn, s, yytext);
-    fprintf(stderr, "%d:%d: %s: %s\n", yylineno, yycolumn, s, yytext);
+    //fprintf(stderr, "%d:%d: %s: %s\n", yylineno, yycolumn, s, yytext);
+    fprintf(stderr, "%s: %s\n", s, yytext);
     exit(1);
 }
+
+/*
+extern "C" {
+
+int yywrap() {
+    if(lexerCtx.eof && lexerCtx.tokens.empty()) {
+        fclose(yyin);
+        return 0;
+    }
+    else{
+        return 1;
+    }
+}
+
+}*/
 
 #include "ast/all.h"
 #include "parser.hpp"
@@ -123,42 +99,9 @@ extern FILE * yyin;
 #define VA_NARGS_IMPL(_1, _2, _3, _4, _5, N, ...) N
 #define VA_NARGS(...) VA_NARGS_IMPL(X,##__VA_ARGS__, 4, 3, 2, 1, 0)
 
-#define yyPopQueue() \
-    if(yyNLFound){ \
-        LOG_LEXER("yyPopQueue: yyNLFOund = false"); \
-        yyNLFound = false; \
-        return TOK_END_INSTR; \
-    } \
-    if(!yyTokenQueue.empty()){ \
-        int result = yyTokenQueue.front(); \
-        std::string *id = yyIdQueue.front(); \
-        yyTokenQueue.pop(); \
-        yyIdQueue.pop(); \
-        if(EOF == result){ \
-            yyterminate(); \
-        } \
-        else if(TOK_OUTDENT == result) { \
-            LOG_LEXER("yyPopQueue OUTDENT: yyNLFOund = true"); \
-            yyNLFound = true; \
-            return result; \
-        } \
-        else if(id == NULL){ \
-            yylval.token = result; \
-            return result; \
-        } \
-        else{ \
-            yylval.string = id;\
-            return result; \
-        } \
-    }
-
-#define yyReturn(...) \
-        yyQueueTokens(VA_NARGS(__VA_ARGS__), ##__VA_ARGS__); \
-        yyPopQueue();
-
-#define yyReturnId(t) \
-        yyQueueTokenId(t, new std::string(yytext, yyleng)); \
-        yyPopQueue();
+#define yyReturnId(foundToken) \
+    yylval.string = new std::string(strdup(yytext), yyleng); \
+    return foundToken;
 
 #if INTERACTIVE_INPUT && ((defined(LIBREADLINE) && LIBREADLINE) || (defined(LIBEDIT) && LIBEDIT))
 
@@ -169,181 +112,334 @@ extern FILE * yyin;
 static void lexer_input(char *buf, int *result, int max);
 
 #endif
+
+
 %}
 
 
 
  /* This is a sub-parser (state) for indentation-sensitive scoping */
-%s yy_state_indent
+%s lex_state_indent
+%s lex_state_newline
+%s lex_state_skipindent
+%s lex_state_skipnl
+%s lex_state_spaceaware
+%s lex_state_unstack
+%s lex_state_blockbegin
+%s lex_state_blockend
 
  /* %option 8bit reentrant bison-bridge */
 %option warn
-%option nodefault
-%option yylineno
+/*%option nodefault*/
 %option noyywrap
+%option stack
 
  /*%option debug*/
 %%
-    yyReturn();
-
-<yy_state_indent>[ \t]*\r\n|[ \t]*\r|[ \t]*\n   { /* ignoring blank line */
-    yySpaceSensitive = false;
-    g_indent_count = 0;
-}
-
-<yy_state_indent>" "+            {
-    yySpaceSensitive = false;
-    if(g_indent_context.style == ContextIndentInfo::UNDEFINED){
-        g_indent_context.style = ContextIndentInfo::SPACE;
-        g_indent_context.spaceSize = yyleng;
+    if(lexerCtx.eof){
+        if(lexerCtx.tokens.empty()) {
+            LOG_LEXER("End of file !!!!!");
+            yyterminate();
+        }
+        else{
+            int result = lexerCtx.tokens.front();
+            lexerCtx.tokens.pop();
+            return result;
+        }
     }
-#if !INDENT_ALLOW_MIXED
-    else if(g_indent_context.style == ContextIndentInfo::TAB){
-#if INDENT_FAIL_ON_ERROR
-        lyyerror("indentation defined as tab indent, spaces found : ");
-#else
-        return TOK_BAD_INDENT;
-#endif
-    }
-#endif
-    if(yyleng % g_indent_context.spaceSize != 0){
-#if INDENT_FAIL_ON_ERROR
-        lyyerror("bad space count : ");
-#else
-        return TOK_BAD_INDENT;
-#endif
-    }
-    g_indent_count += yyleng / g_indent_context.spaceSize;
-}
-
-<yy_state_indent>\t+             {
-    yySpaceSensitive = false;
-    if(g_indent_context.style == ContextIndentInfo::UNDEFINED){
-            g_indent_context.style = ContextIndentInfo::TAB;
-    }
-#if !INDENT_ALLOW_MIXED
-    else if(g_indent_context.style == ContextIndentInfo::SPACE) {
-#if INDENT_FAIL_ON_ERROR
-        lyyerror("indentation defined as space indent, tab found : ");
-#else
-        return TOK_BAD_INDENT;
-#endif
-    }
-#endif
-    g_indent_count += yyleng;
-}
-
-\r\n|\r|\n                  {
-    yySpaceSensitive = false;
-    g_indent_count = 0;
-    BEGIN(yy_state_indent);
-    LOG_LEXER("NL: Entering Indent state");
-    if(!yySkipNL){
-        yySkipNL = true;
-        //if(yyIndentSensitiveStack.empty() || !yyIndentSensitiveStack.top()){
-            LOG_LEXER("NL: yyNLFound = true");
-            yyNLFound = true;
-        //}
-    }
-    if(!yyNLFound){
-        yyReturn();
-    }
-}
-[ \t]                       { yySpaceSensitive = false; };
-"return"                    { yySkipNL = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TRETURN); }
-"if"                        { yySkipNL = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TIF); }
-"else"                      { yySkipNL = false; LOG_LEXER("else:yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TELSE); }
-"true"                      { yySkipNL = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TTRUE); }
-"false"                     { yySkipNL = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TFALSE); }
-[A-Z][a-zA-Z0-9_\?]*        { yySkipNL = false; yySpaceSensitive = false; yyIndentCheck(); yyReturnId(TTYPENAME); }
-[a-z_][a-zA-Z0-9_\?!]*      { yySkipNL = false; yySpaceSensitive = true; yyIndentCheck(); yyReturnId(TIDENTIFIER); }
-[0-9]+\.[0-9]*              { yySkipNL = false; yySpaceSensitive = false; yyIndentCheck(); yyReturnId(TDOUBLE); }
-[0-9]+                      { yySkipNL = false; yySpaceSensitive = false; yyIndentCheck(); yyReturnId(TINTEGER); }
-"="                         { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TEQUAL); }
-"=="                        { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturnId(TCEQ); }
-"!="                        { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TCNE); }
-"<"                         { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TCLT); }
-"<="                        { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TCLE); }
-">"                         { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TCGT); }
-">="                        { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TCGE); }
-"."                         { yySkipNL = false; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TDOT); }
-","                         { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TCOMMA); }
-"+"                         { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturnId(TPLUS); }
-"-"                         { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturnId(TMINUS); }
-"*"                         { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturnId(TMUL); }
-"/"                         { yySkipNL = true; LOG_LEXER("sign: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturnId(TDIV); }
-";"                         { yySkipNL = true; LOG_LEXER(";: yyNLFOund = false"); yyNLFound = false; yySpaceSensitive = false; yyIndentCheck(); yyReturn(TOK_END_INSTR); }
-"("                         {
-    yySkipNL = true;
-    bool searchLParent = yySpaceSensitive;
-    yySpaceSensitive = false;
-    yyIndentCheck();
-    if(searchLParent){
-        yyReturn(TOK_NO_SPACE, TLPAREN);
-    }
-    else{
-        yyReturn(TLPAREN);
-    }
-}
-")"                         { yySkipNL = false; /*LOG_LEXER("{: yyNLFOund = false"); yyNLFound = false;*/ yySpaceSensitive = false; yyIndentCheck(); yyReturn(TRPAREN); }
-"{"                         { yySkipNL = true; /*LOG_LEXER("}: yyNLFOund = false"); yyNLFound = false;*/ yySpaceSensitive = false; yyIndentCheck(); yyReturn(TLBRACE); }
-"}"                         {
-    yySpaceSensitive = false;
-    //yyNLFound = false;
-    //LOG_LEXER("}: yyNLFound = false");
-    yyIndentCheck();
-    if(!yySkipNL){
-        yyReturn(TOK_END_INSTR, TRBRACE);
-    }
-    else{
-        yySkipNL = false;
-        yyReturn(TRBRACE);
-    }
-}
 
 <*><<EOF>>                  {
-    if(!yySkipNL){
-        yyQueueToken(TOK_END_INSTR);
+    if(lexerCtx.eof){
+        int result = lexerCtx.tokens.front();
+        lexerCtx.tokens.pop();
+        return result;
     }
-    while(g_indent_context.indentCount > 0){
-        --g_indent_context.indentCount;
-        yyQueueToken(TOK_OUTDENT);
+    else{
+        lexerCtx.eof = true;
+        lexerCtx.tokens.push(TOK_END_INSTR);
+        while(lexerCtx.indents.top() > 0){
+            --lexerCtx.indents.top();
+            lexerCtx.tokens.push(TOK_OUTDENT);
+        }
     }
-    yyReturn(EOF);
 }
-.                           {   printf("Unknown token!\n"); yyterminate();  }
+
+<lex_state_blockbegin>{
+    [ \t]*\r\n|[ \t]*\r|[ \t]*\n   { /* ignoring blank line */
+    }
+
+    [ \t]*  {
+        yyless(0);
+        lexerCtx.lineIndents = 0;
+        lexerCtx.indents.push(0);
+        lexPushState(lex_state_indent);
+    }
+
+    "{"                          {
+        lexerCtx.indents.pop();
+        while(!lexerCtx.latentTokens.empty()){
+            lexerCtx.latentTokens.pop();
+        }
+        lexPopState();
+        lexerCtx.indents.push(0);
+        return TLBRACE;
+    }
+
+    .                               {
+        yyless(0);
+        lexerCtx.indents.pop();
+        bool indentFound = false;
+        while(!lexerCtx.latentTokens.empty()){
+            if(!indentFound && lexerCtx.latentTokens.front() == TOK_INDENT){
+                lexerCtx.tokens.push(TOK_INDENT);
+                indentFound = true;
+            }
+            lexerCtx.latentTokens.pop();
+        }
+        lexPopState();
+        if(!indentFound){
+            lexerCtx.tokens.push(TOK_BAD_INDENT);
+        }
+        else{
+            lexerCtx.indents.push(0);
+        }
+        lexPushState(lex_state_unstack);
+    }
+
+}
+
+<lex_state_blockend>{
+    [ \t]*\r\n|[ \t]*\r|[ \t]*\n   { /* ignoring blank line */
+    }
+
+    [ \t]*  {
+        yyless(0);
+        lexerCtx.lineIndents = 0;
+        lexPushState(lex_state_indent);
+    }
+
+    .                               {
+        yyless(0);
+        while(!lexerCtx.latentTokens.empty()){
+            lexerCtx.tokens.push(lexerCtx.latentTokens.front());
+            lexerCtx.latentTokens.pop();
+        }
+        lexPopState();
+        if(!lexerCtx.tokens.empty()){
+            lexPushState(lex_state_unstack);
+        }
+    }
+
+}
+
+<lex_state_newline>{
+    [ \t]*\r\n|[ \t]*\r|[ \t]*\n   { /* ignoring blank line */
+    }
+
+    [ \t]*  {
+        yyless(0);
+        lexerCtx.lineIndents = 0;
+        lexPushState(lex_state_indent);
+    }
+
+    "else"                          {
+        yyless(0);
+        lexPopState();
+
+    }
+
+    .                               {
+        yyless(0);
+        while(!lexerCtx.latentTokens.empty()){
+            lexerCtx.tokens.push(lexerCtx.latentTokens.front());
+            lexerCtx.latentTokens.pop();
+        }
+        lexPopState();
+        if(!lexerCtx.tokens.empty()){
+            lexPushState(lex_state_unstack);
+        }
+    }
+
+}
+
+<lex_state_indent>{
+    " "+            {
+        LOG_LEXER("HERE 1 !!! %d", lexerCtx.indentContext.style);
+        if(lexerCtx.indentContext.style == IndentInfo::UNDEFINED){
+            LOG_LEXER("HERE 1.1 !!! %d", lexerCtx.indentContext.style);
+            lexerCtx.indentContext.style = IndentInfo::SPACE;
+            lexerCtx.indentContext.spaceSize = yyleng;
+        }
+#if !INDENT_ALLOW_MIXED
+        else if(lexerCtx.indentContext.style == IndentInfo::TAB){
+            LOG_LEXER("HERE 1.2 !!! %d", lexerCtx.indentContext.style);
+            return TOK_BAD_INDENT;
+        }
+#endif
+        if(yyleng % lexerCtx.indentContext.spaceSize != 0 || yyleng == 1){
+            return TOK_BAD_INDENT;
+        }
+        lexerCtx.lineIndents += yyleng / lexerCtx.indentContext.spaceSize;
+    }
+
+    \t+             {
+        LOG_LEXER("HERE 2 !!!");
+        if(lexerCtx.indentContext.style == IndentInfo::UNDEFINED){
+            lexerCtx.indentContext.style = IndentInfo::TAB;
+        }
+#if !INDENT_ALLOW_MIXED
+        else if(lexerCtx.indentContext.style == IndentInfo::SPACE) {
+            return TOK_BAD_INDENT;
+        }
+#endif
+        lexerCtx.lineIndents += yyleng;
+    }
+
+    .               {
+        yyless(0);
+        //if(lexerCtx.indentsSensitive.top()){
+            while(lexerCtx.lineIndents < lexerCtx.indents.top()){
+                --lexerCtx.indents.top();
+                lexerCtx.latentTokens.push(TOK_OUTDENT);
+            }
+            if(lexerCtx.lineIndents > lexerCtx.indents.top()){
+                lexerCtx.latentTokens.push(TOK_INDENT);
+                ++lexerCtx.indents.top();
+                while(lexerCtx.lineIndents > lexerCtx.indents.top()){
+                    ++lexerCtx.indents.top();
+                    lexerCtx.latentTokens.push(TOK_BAD_INDENT);
+                }
+            }
+        //}
+        lexPopState();
+    }
+}
+
+<lex_state_skipindent>{
+    [ \t]*\r\n|[ \t]*\r|[ \t]*\n   { /* ignoring blank line */
+    }
+
+    [ \t]*                          {
+        lexPopState();
+    }
+
+    .                               {
+        yyless(0);
+        lexPopState();
+    }
+}
+
+<lex_state_skipnl>{
+    [ \t]*\r\n|[ \t]*\r|[ \t]*\n   { /* ignoring blank line */
+    }
+
+    \r\n|\r|\n*                     {
+        lexPopState();
+    }
+
+    .                               {
+        yyless(0);
+        lexPopState();
+    }
+}
+
+<lex_state_spaceaware>{
+    ([ \r\n\t]+)+                   {
+        lexPopState();
+    }
+
+    "("                             {
+        lexerCtx.tokens.push(TOK_NO_SPACE);
+        lexerCtx.tokens.push(TLPAREN);
+        lexPopState();
+        lexPushState(lex_state_unstack);
+    }
+
+    .                               {
+        yyless(0);
+        lexPopState();
+    }
+}
+
+<lex_state_unstack>{
+    .                   {
+        yyless(0);
+        if(lexerCtx.tokens.empty()){
+            lexPopState();
+        }
+        else{
+            int result = lexerCtx.tokens.front();
+            lexerCtx.tokens.pop();
+            return result;
+        }
+    }
+}
+
+<INITIAL>{
+    [\t ]*                      {}
+    \r\n|\r|\n                  {
+        lexerCtx.latentTokens.push(TOK_END_INSTR);
+        lexPushState(lex_state_newline);
+    }
+}
+
+<INITIAL>{
+    "return"                    { return TRETURN; }
+    "if"                        { return TIF; }
+    "else"                      { return TELSE; }
+    "true"                      { return TTRUE; }
+    "false"                     { return TFALSE; }
+    [A-Z][a-zA-Z0-9_\?]*        { yyReturnId(TTYPENAME); }
+    [a-z_][a-zA-Z0-9_\?!]*      { lexPushState(lex_state_spaceaware); yyReturnId(TIDENTIFIER); }
+    [0-9]+\.[0-9]*              { yyReturnId(TDOUBLE); }
+    [0-9]+                      { yyReturnId(TINTEGER); }
+    "="                         { return TEQUAL; }
+    "=="                        { yyReturnId(TCEQ); }
+    "!="                        { return TCNE; }
+    "<"                         { return TCLT; }
+    "<="                        { return TCLE; }
+    ">"                         { return TCGT; }
+    ">="                        { return TCGE; }
+    "."                         { return TDOT; }
+    ","                         { return TCOMMA; }
+    "+"                         { lexPushState(lex_state_skipnl); yyReturnId(TPLUS); }
+    "-"                         { lexPushState(lex_state_skipnl); yyReturnId(TMINUS); }
+    "*"                         { lexPushState(lex_state_skipnl); yyReturnId(TMUL); }
+    "/"                         { lexPushState(lex_state_skipnl); yyReturnId(TDIV); }
+    ";"                         { return TOK_END_INSTR; }
+    "("                         {
+        //lexerCtx.indents.push(false);
+        //lexPushState(lex_state_skipnl);
+        return TLPAREN;
+    }
+    ")"                         {
+        //lexerCtx.indentSensitive.pop();
+        //lexPopState();
+        return TRPAREN;
+    }
+    "{"                         {
+        while(!lexerCtx.latentTokens.empty()){
+            lexerCtx.latentTokens.pop();
+        }
+        //lexerCtx.indentSensitive.push(false);
+        lexerCtx.indents.push(0);
+        return TLBRACE;
+    }
+    "}"                         {
+        lexerCtx.tokens.push(TOK_END_INSTR);
+        lexerCtx.tokens.push(TRBRACE);
+        lexerCtx.latentTokens.push(TOK_END_INSTR);
+        lexPushState(lex_state_blockend);
+        lexPushState(lex_state_unstack);
+        lexerCtx.indents.pop();
+    }
+    .                           {   LOG_LEXER("Unknown token!!!!!"); yyterminate();  }
+}
+
+
 
 %%
 
-void yyIndentCheck(){
-    if(YY_START != yy_state_indent){
-        return;
-    }
-    LOG_LEXER("IndentChack: Leaving Indent state");
-    BEGIN(INITIAL);
-    if(yyIndentSensitiveStack.empty() || !yyIndentSensitiveStack.top()){
-        return;
-    }
-    while(g_indent_count < g_indent_context.indentCount){
-        --g_indent_context.indentCount;
-        yyQueueToken(TOK_OUTDENT);
-        LOG_LEXER("IndentCheck: OUTDENT + yyNLFOund = true");
-    }
-    if(g_indent_count > g_indent_context.indentCount){
-        yyNLFound = false;
-        LOG_LEXER("IndentCheck: Indent found + yyNLFound = false");
-        yyQueueToken(TOK_INDENT);
-        ++g_indent_context.indentCount;
-#if INDENT_FAIL_ON_ERROR
-        if(g_indent_count > g_indent_context.indentCount){
-            lyyerror("indentation increased more than once");
-        }
-#else
-        while(g_indent_count > g_indent_context.indentCount){
-            ++g_indent_context.indentCount;
-            yyQueueToken(TOK_BAD_INDENT);
-        }
-#endif
-    }
-
+void lexStartBlock() {
+    lexPushState(lex_state_blockbegin);
 }
