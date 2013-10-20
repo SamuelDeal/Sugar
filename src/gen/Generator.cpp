@@ -192,7 +192,7 @@ Function* Generator::generateEchoBoolFunction(llvm::Function* printfFn, Generati
            );
     llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
 
-    const char *trueConstValue = "True\n";
+    const char *trueConstValue = "true\n";
     llvm::Constant *trueStrConst = llvm::ConstantDataArray::getString(gen.context, trueConstValue);
     llvm::GlobalVariable *trueVar = new llvm::GlobalVariable(
             *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
@@ -202,7 +202,7 @@ Function* Generator::generateEchoBoolFunction(llvm::Function* printfFn, Generati
     indicesTrue.push_back(gen.intZero);
     llvm::Constant *trueRef = llvm::ConstantExpr::getGetElementPtr(trueVar, indicesTrue);
 
-    const char *falseConstValue = "False\n";
+    const char *falseConstValue = "false\n";
     llvm::Constant *falseStrConst = llvm::ConstantDataArray::getString(gen.context, falseConstValue);
     llvm::GlobalVariable *falseVar = new llvm::GlobalVariable(
             *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),

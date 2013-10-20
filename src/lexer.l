@@ -41,28 +41,38 @@ LexerContext lexerCtx;
 #endif
 
 
+const char * const  state_names[] = {
+"INITIAL",
+"newline",
+"skipnl",
+"spaceaware",
+"unstack",
+"rbrace",
+"rbrace_newline"
+};
+
 #define lexPushState(state) { \
     int old = YY_START; \
-    LOG_LEXER(" adding state: %d", __LINE__); \
     yy_push_state(state); \
-    LOG_LEXER(" ++ state added: %d (from %d)", state, old); \
+    LOG_LEXER(" ++ state added: %s (from %s, line %d)", state_names[state], state_names[old], __LINE__); \
 }
 
 
 #define lexPopState() { \
     int old = YY_START; \
-    LOG_LEXER(" poping state: %d", __LINE__); \
     yy_pop_state(); \
-    LOG_LEXER(" -- state poped: %d, (current: %d)", old, YY_START); \
+    LOG_LEXER(" -- state poped: %s, (current: %s, line %d)", state_names[old], state_names[YY_START], __LINE__); \
 }
 
 #define YY_USER_INIT { \
         lexerCtx.indentContext.spaceSize = -1; \
         lexerCtx.indentContext.style = IndentInfo::UNDEFINED; \
         lexerCtx.lineIndents = 0; \
-        lexerCtx.indents.push(0); \
+        lexerCtx.indents.push(new IndentContext()); \
+        lexerCtx.indents.top()->start = 0; \
+        lexerCtx.indents.top()->current = 0; \
         lexerCtx.eof = false; \
-        LOG_LEXER("Entering Indent state"); \
+        lexerCtx.pendingEndInstr = false; \
         lexPushState(lex_state_newline); \
     }
 
@@ -119,18 +129,16 @@ static void lexer_input(char *buf, int *result, int max);
 
 
  /* This is a sub-parser (state) for indentation-sensitive scoping */
-%s lex_state_indent
 %s lex_state_newline
-%s lex_state_skipindent
 %s lex_state_skipnl
 %s lex_state_spaceaware
 %s lex_state_unstack
-%s lex_state_blockbegin
-%s lex_state_blockend
+%s lex_state_rbrace
+%s lex_state_rbrace_newline
 
  /* %option 8bit reentrant bison-bridge */
 %option warn
-/*%option nodefault*/
+%option nodefault
 %option noyywrap
 %option stack
 
@@ -147,7 +155,6 @@ static void lexer_input(char *buf, int *result, int max);
             return result;
         }
     }
-
 <*><<EOF>>                  {
     if(lexerCtx.eof){
         int result = lexerCtx.tokens.front();
@@ -156,103 +163,51 @@ static void lexer_input(char *buf, int *result, int max);
     }
     else{
         lexerCtx.eof = true;
+        LOG_LEXER(" ## adding TOK_END_INSTR (line %d)", __LINE__);
         lexerCtx.tokens.push(TOK_END_INSTR);
-        while(lexerCtx.indents.top() > 0){
-            --lexerCtx.indents.top();
+        while(lexerCtx.indents.top()->current > lexerCtx.indents.top()->start){
+            --lexerCtx.indents.top()->current;
             lexerCtx.tokens.push(TOK_OUTDENT);
+            LOG_LEXER(" ## adding TOK_END_INSTR (line %d)", __LINE__);
+            lexerCtx.tokens.push(TOK_END_INSTR);
         }
     }
 }
 
-<lex_state_blockbegin>{
-    [ \t]*\r\n|[ \t]*\r|[ \t]*\n   { /* ignoring blank line */
-    }
 
-    [ \t]*  {
-        yyless(0);
-        lexerCtx.lineIndents = 0;
-        lexerCtx.indents.push(0);
-        lexPushState(lex_state_indent);
-    }
-
-    "{"                          {
-        lexerCtx.indents.pop();
-        while(!lexerCtx.latentTokens.empty()){
-            lexerCtx.latentTokens.pop();
-        }
-        lexPopState();
-        lexerCtx.indents.push(0);
-        return TLBRACE;
-    }
-
-    .                               {
-        yyless(0);
-        lexerCtx.indents.pop();
-        bool indentFound = false;
-        while(!lexerCtx.latentTokens.empty()){
-            if(!indentFound && lexerCtx.latentTokens.front() == TOK_INDENT){
-                lexerCtx.tokens.push(TOK_INDENT);
-                indentFound = true;
-            }
-            lexerCtx.latentTokens.pop();
-        }
-        lexPopState();
-        if(!indentFound){
-            lexerCtx.tokens.push(TOK_BAD_INDENT);
-        }
-        else{
-            lexerCtx.indents.push(0);
-        }
-        lexPushState(lex_state_unstack);
-    }
-
-}
-
-<lex_state_blockend>{
-    [ \t]*\r\n|[ \t]*\r|[ \t]*\n   { /* ignoring blank line */
-    }
-
-    [ \t]*  {
-        yyless(0);
-        lexerCtx.lineIndents = 0;
-        lexPushState(lex_state_indent);
-    }
-
-    .                               {
-        yyless(0);
-        while(!lexerCtx.latentTokens.empty()){
-            lexerCtx.tokens.push(lexerCtx.latentTokens.front());
-            lexerCtx.latentTokens.pop();
-        }
-        lexPopState();
-        if(!lexerCtx.tokens.empty()){
-            lexPushState(lex_state_unstack);
-        }
-    }
-
-}
 
 <lex_state_newline>{
-    [ \t]*\r\n|[ \t]*\r|[ \t]*\n   { /* ignoring blank line */
-    }
-
-    [ \t]*  {
-        yyless(0);
-        lexerCtx.lineIndents = 0;
-        lexPushState(lex_state_indent);
-    }
-
     "else"                          {
         yyless(0);
-        lexPopState();
-
-    }
-
-    .                               {
-        yyless(0);
-        while(!lexerCtx.latentTokens.empty()){
-            lexerCtx.tokens.push(lexerCtx.latentTokens.front());
-            lexerCtx.latentTokens.pop();
+        if(lexerCtx.indents.top()->start == -1){
+            lexerCtx.pendingEndInstr = false;
+            lexerCtx.indents.top()->start = lexerCtx.lineIndents;
+            lexerCtx.indents.top()->current = lexerCtx.lineIndents;
+        }
+        else if(lexerCtx.lineIndents == lexerCtx.indents.top()->current){
+            if(lexerCtx.pendingEndInstr){
+                lexerCtx.pendingEndInstr = false;
+                LOG_LEXER(" ## adding TOK_END_INSTR (line %d)", __LINE__);
+                lexerCtx.tokens.push(TOK_END_INSTR);
+            }
+        }
+        else if(lexerCtx.lineIndents > lexerCtx.indents.top()->current){
+            lexerCtx.pendingEndInstr = false;
+            lexerCtx.tokens.push(TOK_INDENT);
+            ++lexerCtx.indents.top()->current;
+            while(lexerCtx.lineIndents > lexerCtx.indents.top()->current){
+                ++lexerCtx.indents.top()->current;
+                lexerCtx.tokens.push(TOK_BAD_INDENT);
+            }
+        }
+        else{
+            lexerCtx.pendingEndInstr = false;
+            while(lexerCtx.lineIndents < lexerCtx.indents.top()->current){
+                --lexerCtx.indents.top()->current;
+                LOG_LEXER(" ## adding TOK_END_INSTR (line %d)", __LINE__);
+                lexerCtx.tokens.push(TOK_END_INSTR);
+                lexerCtx.tokens.push(TOK_OUTDENT);
+            }
         }
         lexPopState();
         if(!lexerCtx.tokens.empty()){
@@ -260,9 +215,74 @@ static void lexer_input(char *buf, int *result, int max);
         }
     }
 
+    "." {
+        while(!lexerCtx.latentTokens.empty()){
+            lexerCtx.latentTokens.pop();
+        }
+        yyless(0);
+        lexPopState();
+    }
+
+    "{" {
+        while(!lexerCtx.latentTokens.empty()){
+            lexerCtx.latentTokens.pop();
+        }
+        yyless(0);
+        lexPopState();
+    }
+
+    "}" {
+        while(!lexerCtx.latentTokens.empty()){
+            lexerCtx.latentTokens.pop();
+        }
+        yyless(0);
+        lexPopState();
+    }
+
+
+
 }
 
-<lex_state_indent>{
+<lex_state_rbrace>{
+    [ \t]* { /* ignoring spaces */
+    }
+
+    \r\n|\r|\n {
+        yyless(0);
+        lexPopState();
+        lexerCtx.lineIndents = 0;
+        lexPushState(lex_state_rbrace_newline);
+    }
+
+    "else" {
+        yyless(0);
+        lexerCtx.pendingEndInstr = false;
+        lexPopState();
+        lexPushState(lex_state_newline);
+    }
+
+    . {
+        yyless(0);
+        lexerCtx.pendingEndInstr = true;
+        lexPopState();
+        lexPushState(lex_state_newline);
+    }
+}
+
+<lex_state_rbrace_newline>{
+    "else" {
+        yyless(0);
+        lexerCtx.pendingEndInstr = false;
+        lexPopState();
+        lexPushState(lex_state_newline);
+    }
+}
+
+<lex_state_newline,lex_state_rbrace_newline>{
+    [ \t]*\r\n|[ \t]*\r|[ \t]*\n   { /* ignoring blank line */
+        lexerCtx.lineIndents = 0;
+    }
+
     " "+            {
         LOG_LEXER("HERE 1 !!! %d", lexerCtx.indentContext.style);
         if(lexerCtx.indentContext.style == IndentInfo::UNDEFINED){
@@ -270,12 +290,12 @@ static void lexer_input(char *buf, int *result, int max);
             lexerCtx.indentContext.style = IndentInfo::SPACE;
             lexerCtx.indentContext.spaceSize = yyleng;
         }
-#if !INDENT_ALLOW_MIXED
+    #if !INDENT_ALLOW_MIXED
         else if(lexerCtx.indentContext.style == IndentInfo::TAB){
             LOG_LEXER("HERE 1.2 !!! %d", lexerCtx.indentContext.style);
             return TOK_BAD_INDENT;
         }
-#endif
+    #endif
         if(yyleng % lexerCtx.indentContext.spaceSize != 0 || yyleng == 1){
             return TOK_BAD_INDENT;
         }
@@ -287,45 +307,52 @@ static void lexer_input(char *buf, int *result, int max);
         if(lexerCtx.indentContext.style == IndentInfo::UNDEFINED){
             lexerCtx.indentContext.style = IndentInfo::TAB;
         }
-#if !INDENT_ALLOW_MIXED
+    #if !INDENT_ALLOW_MIXED
         else if(lexerCtx.indentContext.style == IndentInfo::SPACE) {
             return TOK_BAD_INDENT;
         }
-#endif
+    #endif
         lexerCtx.lineIndents += yyleng;
-    }
-
-    .               {
-        yyless(0);
-        //if(lexerCtx.indentsSensitive.top()){
-            while(lexerCtx.lineIndents < lexerCtx.indents.top()){
-                --lexerCtx.indents.top();
-                lexerCtx.latentTokens.push(TOK_OUTDENT);
-            }
-            if(lexerCtx.lineIndents > lexerCtx.indents.top()){
-                lexerCtx.latentTokens.push(TOK_INDENT);
-                ++lexerCtx.indents.top();
-                while(lexerCtx.lineIndents > lexerCtx.indents.top()){
-                    ++lexerCtx.indents.top();
-                    lexerCtx.latentTokens.push(TOK_BAD_INDENT);
-                }
-            }
-        //}
-        lexPopState();
-    }
-}
-
-<lex_state_skipindent>{
-    [ \t]*\r\n|[ \t]*\r|[ \t]*\n   { /* ignoring blank line */
-    }
-
-    [ \t]*                          {
-        lexPopState();
     }
 
     .                               {
         yyless(0);
+        if(lexerCtx.indents.top()->start == -1){
+            lexerCtx.pendingEndInstr = false;
+            lexerCtx.indents.top()->start = lexerCtx.lineIndents;
+            lexerCtx.indents.top()->current = lexerCtx.lineIndents;
+        }
+        else if(lexerCtx.lineIndents == lexerCtx.indents.top()->current){
+            if(lexerCtx.pendingEndInstr){
+                lexerCtx.pendingEndInstr = false;
+                LOG_LEXER(" ## adding TOK_END_INSTR (line %d)", __LINE__);
+                lexerCtx.tokens.push(TOK_END_INSTR);
+            }
+        }
+        else if(lexerCtx.lineIndents > lexerCtx.indents.top()->current){
+            lexerCtx.pendingEndInstr = false;
+            lexerCtx.tokens.push(TOK_INDENT);
+            ++lexerCtx.indents.top()->current;
+            while(lexerCtx.lineIndents > lexerCtx.indents.top()->current){
+                ++lexerCtx.indents.top()->current;
+                lexerCtx.tokens.push(TOK_BAD_INDENT);
+            }
+        }
+        else{
+            lexerCtx.pendingEndInstr = false;
+            while(lexerCtx.lineIndents < lexerCtx.indents.top()->current){
+                --lexerCtx.indents.top()->current;
+                LOG_LEXER(" ## adding TOK_END_INSTR (line %d)", __LINE__);
+                lexerCtx.tokens.push(TOK_END_INSTR);
+                lexerCtx.tokens.push(TOK_OUTDENT);
+            }
+            LOG_LEXER(" ## adding TOK_END_INSTR (line %d)", __LINE__);
+            lexerCtx.tokens.push(TOK_END_INSTR);
+        }
         lexPopState();
+        if(!lexerCtx.tokens.empty()){
+            lexPushState(lex_state_unstack);
+        }
     }
 }
 
@@ -344,7 +371,10 @@ static void lexer_input(char *buf, int *result, int max);
 }
 
 <lex_state_spaceaware>{
-    ([ \r\n\t]+)+                   {
+    [ \t]*\r\n|[ \t]*\r|[ \t]*\n   { /* ignoring blank line */
+        yyless(0);
+        lexerCtx.pendingEndInstr = true;
+        lexerCtx.lineIndents = 0;
         lexPopState();
     }
 
@@ -362,6 +392,18 @@ static void lexer_input(char *buf, int *result, int max);
 }
 
 <lex_state_unstack>{
+    \r\n|\r|\n          {
+        yyless(0);
+        if(lexerCtx.tokens.empty()){
+            lexPopState();
+        }
+        else{
+            int result = lexerCtx.tokens.front();
+            lexerCtx.tokens.pop();
+            return result;
+        }
+    }
+
     .                   {
         yyless(0);
         if(lexerCtx.tokens.empty()){
@@ -378,7 +420,8 @@ static void lexer_input(char *buf, int *result, int max);
 <INITIAL>{
     [\t ]*                      {}
     \r\n|\r|\n                  {
-        lexerCtx.latentTokens.push(TOK_END_INSTR);
+        lexerCtx.pendingEndInstr = true;
+        lexerCtx.lineIndents = 0;
         lexPushState(lex_state_newline);
     }
 }
@@ -401,7 +444,7 @@ static void lexer_input(char *buf, int *result, int max);
     ">"                         { return TCGT; }
     ">="                        { return TCGE; }
     "."                         { return TDOT; }
-    ","                         { return TCOMMA; }
+    ","                         { lexPushState(lex_state_skipnl); return TCOMMA; }
     "+"                         { lexPushState(lex_state_skipnl); yyReturnId(TPLUS); }
     "-"                         { lexPushState(lex_state_skipnl); yyReturnId(TMINUS); }
     "*"                         { lexPushState(lex_state_skipnl); yyReturnId(TMUL); }
@@ -421,25 +464,33 @@ static void lexer_input(char *buf, int *result, int max);
         while(!lexerCtx.latentTokens.empty()){
             lexerCtx.latentTokens.pop();
         }
-        //lexerCtx.indentSensitive.push(false);
-        lexerCtx.indents.push(0);
+        lexerCtx.indents.push(new IndentContext());
+        lexerCtx.indents.top()->start = -1;
+        lexerCtx.indents.top()->current = -1;
         return TLBRACE;
     }
     "}"                         {
+        LOG_LEXER(" ## adding TOK_END_INSTR (line %d)", __LINE__);
         lexerCtx.tokens.push(TOK_END_INSTR);
+        if(lexerCtx.indents.top()->start != -1){
+            while(lexerCtx.indents.top()->current > lexerCtx.indents.top()->start){
+                --lexerCtx.indents.top()->current;
+                lexerCtx.tokens.push(TOK_OUTDENT);
+                LOG_LEXER(" ## adding TOK_END_INSTR (line %d)", __LINE__);
+                lexerCtx.tokens.push(TOK_END_INSTR);
+            }
+        }
+
         lexerCtx.tokens.push(TRBRACE);
-        lexerCtx.latentTokens.push(TOK_END_INSTR);
-        lexPushState(lex_state_blockend);
+        lexPushState(lex_state_rbrace);
         lexPushState(lex_state_unstack);
+        delete lexerCtx.indents.top();
         lexerCtx.indents.pop();
     }
-    .                           {   LOG_LEXER("Unknown token!!!!!"); yyterminate();  }
+    .                           {
+        LOG_LEXER("Unknown token!!!!!");
+        yyterminate();
+    }
 }
-
-
 
 %%
-
-void lexStartBlock() {
-    lexPushState(lex_state_blockbegin);
-}

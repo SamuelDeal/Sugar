@@ -16,15 +16,21 @@ struct IndentInfo {
     EStyle style;
 };
 
+struct IndentContext {
+    int current;
+    int start;
+};
+
 struct LexerContext {
     IndentInfo indentContext;
     unsigned int lineIndents;
     std::queue<int> tokens;
     std::queue<int> latentTokens;
-    std::stack<int> indents;
+    std::stack<IndentContext*> indents;
+    bool pendingEndInstr;
     bool eof;
 };
 
-void lexStartBlock();
+
 
 #endif // LEXER_CTX_H

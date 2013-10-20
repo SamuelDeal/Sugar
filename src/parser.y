@@ -208,9 +208,9 @@ block           : TLBRACE block_stmts TRBRACE { $$ = $2; }
 func_decl       : typename ident TOK_NO_SPACE TLPAREN func_decl_args TRPAREN block { $$ = new ast::FunctionDeclaration($1, $2, $5, $7); }
                 ;
 
-func_decl_args  : /*blank*/  { $$ = new std::list<ast::VariableDeclaration*>(); lexStartBlock(); }
-                | var_decl { $$ = new std::list<ast::VariableDeclaration*>(); $$->push_back($<var_decl>1); lexStartBlock(); }
-                | func_decl_args TCOMMA var_decl { $1->push_back($<var_decl>3); lexStartBlock(); }
+func_decl_args  : /*blank*/  { $$ = new std::list<ast::VariableDeclaration*>(); }
+                | var_decl { $$ = new std::list<ast::VariableDeclaration*>(); $$->push_back($<var_decl>1); }
+                | func_decl_args TCOMMA var_decl { $1->push_back($<var_decl>3); }
                 ;
 
 if_expr         : TIF expr { $$ = $2; lexIndentOn(); }

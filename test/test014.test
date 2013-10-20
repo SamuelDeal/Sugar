@@ -7,3 +7,11 @@ else
 	echo 7
 	}
 
+if 1 == 2
+	{
+	echo 6
+	} 
+else 
+	{
+	echo 7
+	}

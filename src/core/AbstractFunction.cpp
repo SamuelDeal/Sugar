@@ -1,7 +1,7 @@
 #include "AbstractFunction.h"
 
 //FIXME: remove this
-#include <iostream>
+//#include <iostream>
 #include "Type.h"
 
 namespace sugar {

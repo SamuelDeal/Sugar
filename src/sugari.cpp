@@ -169,7 +169,7 @@ int main(int argc, char **argv)
 }
 
 void onMainStatement(sugar::ast::Statement *stmt){
-    if(stmt->getKind() == ast::Node::eFunctionDeclaration){
+   if(stmt->getKind() == ast::Node::eFunctionDeclaration){
         programBlock->stmts.push_back(stmt);
     }
     else if(stmt->getKind() == ast::Node::eVariableDeclaration){

@@ -1,3 +1,4 @@
+
 Bool a = 2 == 2
 echo a
 Int b = 1 + 1
