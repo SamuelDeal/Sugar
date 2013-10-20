@@ -5,6 +5,8 @@ namespace ast {
 
 Block::Block() : Statement(Node::eBlock)
 {
+    isFunction = false;
+    ifCount = 0;
 }
 
 Block::~Block() {

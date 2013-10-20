@@ -17,13 +17,23 @@ class Type;
 class Variable;
 class Operator;
 
+class ScopeType {
+public:
+    static const unsigned int Logical = 0x0000;
+    static const unsigned int Global = 0x0001;
+    static const unsigned int Main = 0x0010;
+    static const unsigned int Function = 0x0100;
+};
+
 class Scope
 {
+
 public:
-    Scope(llvm::BasicBlock *block, Scope *parent = NULL, bool forceGlobal = false);
+    Scope(llvm::BasicBlock *block, Scope *parent = NULL, unsigned int type = ScopeType::Logical);
     ~Scope();
 
     bool isGlobal() const;
+    bool isFunction() const;
     Scope* getParent() const;
 
     operator llvm::BasicBlock*() const;
@@ -36,6 +46,7 @@ public:
     std::list<Operator*> getOps(int operatorToken) const;
     Variable* getVar(const std::string &name) const;
     Type* getType(const std::string &name) const;
+    unsigned int ifCount;
 
 protected:
     std::multimap<std::string, Function*> _functions;
@@ -44,7 +55,7 @@ protected:
     std::map<std::string, Type *> _types;
     Scope *_parent;
     llvm::BasicBlock *_block;
-    bool _forcedGlobal;
+    unsigned int _type;
 };
 
 } // namespace core

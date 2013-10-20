@@ -11,5 +11,11 @@ std::string to_string(int i){
     return out.str();
 }
 
+std::string to_string(unsigned int i){
+    std::stringstream out;
+    out << i;
+    return out.str();
+}
+
 }
 #endif

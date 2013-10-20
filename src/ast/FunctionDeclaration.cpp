@@ -13,6 +13,9 @@ FunctionDeclaration::FunctionDeclaration(TypeIdentifier *type, Identifier *id, s
 {
     this->type = type;
     this->block = block;
+    if(block != NULL){
+        block->isFunction = true;
+    }
     this->id = id;
     this->arguments = arguments;
 }

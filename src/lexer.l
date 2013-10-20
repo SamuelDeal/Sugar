@@ -231,13 +231,7 @@ static void lexer_input(char *buf, int *result, int max);
         lexPopState();
     }
 
-    "}" {
-        while(!lexerCtx.latentTokens.empty()){
-            lexerCtx.latentTokens.pop();
-        }
-        yyless(0);
-        lexPopState();
-    }
+
 
 
 
@@ -313,6 +307,14 @@ static void lexer_input(char *buf, int *result, int max);
         }
     #endif
         lexerCtx.lineIndents += yyleng;
+    }
+
+    "}" {
+        while(!lexerCtx.latentTokens.empty()){
+            lexerCtx.latentTokens.pop();
+        }
+        yyless(0);
+        lexPopState();
     }
 
     .                               {

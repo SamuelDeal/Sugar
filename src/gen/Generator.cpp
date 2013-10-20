@@ -51,7 +51,7 @@ GeneratedCode* Generator::generate(ast::Block *block){
 
     GeneratedCode *result = new GeneratedCode(mainFunction, generation, block);
     initCore(gen);
-    gen.pushBlock(mainBlock);
+    gen.pushBlock(mainBlock, ScopeType::Function|ScopeType::Main);
     parse(block, gen);
     gen.builder.CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(gen.context), 0, true));
 #if DEBUG_GENERATOR
@@ -561,7 +561,7 @@ llvm::Value* Generator::parse(ast::FunctionDeclaration *node, Generation &gen){
     llvm::Value* argumentValue;
     std::list<const Type *> types;
 
-    gen.pushBlock(bblock);
+    gen.pushBlock(bblock, ScopeType::Function);
 
     for (it = node->arguments->begin(); it != node->arguments->end(); it++) {
         parse(*it, gen);
@@ -578,7 +578,16 @@ llvm::Value* Generator::parse(ast::FunctionDeclaration *node, Generation &gen){
     }
 
     if(*returnType != gen.voidType){
+#if DEBUG_GENERATOR
+        std::cerr << "!!!! Creating Return" << std::endl;
+#endif
         gen.builder.CreateRet(blockReturnValue);
+    }
+    else{
+#if DEBUG_GENERATOR
+        std::cerr << "!!!! Creating Empty Return" << std::endl;
+#endif
+        gen.builder.CreateRetVoid();
     }
 
     gen.popBlock();
@@ -633,15 +642,22 @@ llvm::Value* Generator::parse(ast::IfExpression *node, Generation &gen){
     llvm::Value *condV = parseNode(node->cond, gen);
 
     llvm::Function *currentFunction = gen.builder.GetInsertBlock()->getParent();
-
-    llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(gen.context, "if", currentFunction);
-    llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(gen.context, "else");
-    llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(gen.context, "endif");
+    core::Scope *currentFunctionScope = gen.getCurrentFunctionScope();
+    unsigned int ifCount = ++currentFunctionScope->ifCount;
+    std::string ifIndex = "";
+    if(ifCount > 1){
+        ifIndex = std::to_string(ifCount);
+    }
+    llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(gen.context, "if"+ifIndex, currentFunction);
+    llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(gen.context, "else"+ifIndex);
+    llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(gen.context, "endif"+ifIndex);
 
     gen.builder.CreateCondBr(condV, thenBB, elseBB);
 
     gen.pushBlock(thenBB);
+    gen.builder.SetInsertPoint(thenBB);
     llvm::Value *thenValue = parse(node->thenBlk, gen);
+
     gen.builder.CreateBr(mergeBB);
     gen.popBlock();
     thenBB = gen.builder.GetInsertBlock();
@@ -649,6 +665,7 @@ llvm::Value* Generator::parse(ast::IfExpression *node, Generation &gen){
 
     currentFunction->getBasicBlockList().push_back(elseBB);
     gen.pushBlock(elseBB);
+    gen.builder.SetInsertPoint(elseBB);
     llvm::Value *elseValue = NULL;
     if(node->elseBlk != NULL){
         elseValue = parse(node->elseBlk, gen);
@@ -660,20 +677,28 @@ llvm::Value* Generator::parse(ast::IfExpression *node, Generation &gen){
 
     currentFunction->getBasicBlockList().push_back(mergeBB);
     gen.pushBlock(mergeBB);
+    gen.builder.SetInsertPoint(mergeBB);
     if(node->elseBlk == NULL || node->elseBlk->getType() != node->thenBlk->getType() ||
             *node->elseBlk->getType() == gen.voidType){
+#if DEBUG_GENERATOR
         std::cerr << "skip phi value" << std::endl;
+#endif
         node->setType(gen.voidType);
+        //gen.builder.SetInsertPoint(mergeBB);
         return NULL;
     }
     else{
+#if DEBUG_GENERATOR
         std::cerr << "generating phi value" << std::endl;
+#endif
         node->setType(*node->elseBlk->getType());
         llvm::PHINode *phiValue = gen.builder.CreatePHI(*node->getType(), 2);
         phiValue->addIncoming(thenValue, thenBB);
         phiValue->addIncoming(elseValue, elseBB);
+        //gen.builder.SetInsertPoint(mergeBB);
         return phiValue;
     }
+
 }
 
 llvm::Value* Generator::parse(ast::Comparison *node, Generation &gen){

@@ -13,6 +13,8 @@ public:
     Block();
     virtual ~Block();
     std::list<Statement *> stmts;
+    bool isFunction;
+    unsigned int ifCount;
 };
 
 } // namespace ast

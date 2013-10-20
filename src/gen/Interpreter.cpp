@@ -70,11 +70,14 @@ void Interpreter::run(ast::Statement *stmt, GeneratedCode *genCode) {
         "__shell_invoke__"+ std::to_string(count), genCode->getModule());
     llvm::BasicBlock *runBlock = llvm::BasicBlock::Create(gen.context, "entry", runFunction, 0);
 
-    gen.pushBlock(runBlock, true);
+    gen.pushBlock(runBlock, ScopeType::Main|ScopeType::Function);
     parseNode(stmt, gen);
     gen.popBlock();
 
     //llvm::ReturnInst::Create(gen.context, runBlock);
+#if DEBUG_GENERATOR
+    std::cerr << "Create final empty return.\n";
+#endif
     gen.builder.CreateRetVoid();
 
 #if DEBUG_GENERATOR

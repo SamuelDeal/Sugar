@@ -5,13 +5,16 @@
 #include "Variable.h"
 #include "Type.h"
 
+#include <iostream>
+
 namespace sugar {
 namespace core {
 
-Scope::Scope(llvm::BasicBlock *block, Scope *parent, bool forceGlobal) {
+Scope::Scope(llvm::BasicBlock *block, Scope *parent, unsigned int type) {
     _parent = parent;
     _block = block;
-    _forcedGlobal = forceGlobal;
+    _type = type;
+    ifCount = 0;
 }
 
 Scope::~Scope(){
@@ -22,7 +25,11 @@ Scope* Scope::getParent() const {
 }
 
 bool Scope::isGlobal() const {
-    return _parent == NULL || _forcedGlobal;
+    return _parent == NULL || ((_type & ScopeType::Global) == ScopeType::Global);
+}
+
+bool Scope::isFunction() const {
+    return (_type & ScopeType::Function) == ScopeType::Function;
 }
 
 void Scope::addFunction(Function *function){

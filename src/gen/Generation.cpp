@@ -1,4 +1,5 @@
 #include "Generation.h"
+#include <iostream>
 
 namespace sugar {
 namespace gen {
@@ -11,7 +12,7 @@ Generation::Generation() :
     trueConst(llvm::ConstantInt::getTrue(context)),
     falseConst(llvm::ConstantInt::getFalse(context)),
     intZero(llvm::Constant::getNullValue(intType)),
-    rootScope(NULL, NULL),
+    rootScope(NULL, NULL, core::ScopeType::Global),
     scope(&rootScope),
     builder(context)
 {
@@ -31,19 +32,32 @@ llvm::Module* Generation::getModule() const {
     return module;
 }
 
-void Generation::pushBlock(llvm::BasicBlock *block, bool forceGlobal) {
+void Generation::pushBlock(llvm::BasicBlock *block, unsigned int scopeType) {
     core::Scope* oldScope = scope;
-    scope = new core::Scope(block, oldScope, forceGlobal);
-    builder.SetInsertPoint(block);
+    scope = new core::Scope(block, oldScope, scopeType);
+    if(scope->isFunction()){
+        builder.SetInsertPoint(block);
+    }
 }
 
 void Generation::popBlock() {
     core::Scope* oldScope = scope;
     scope = oldScope->getParent();
-    delete oldScope;
-    if(scope != NULL && !scope->isGlobal()){
+    if(oldScope->isFunction() && scope != NULL && !scope->isGlobal()){
         builder.SetInsertPoint(*scope);
     }
+    delete oldScope;
+}
+
+core::Scope* Generation::getCurrentFunctionScope() {
+    core::Scope* result = scope;
+    while(result != NULL && !result->isFunction()){
+        result = result->getParent();
+    }
+    if(result == NULL){
+        std::cout << "this should not happen" << std::endl;
+    }
+    return result;
 }
 
 } // namespace gen

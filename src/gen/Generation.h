@@ -24,9 +24,10 @@ class Generation
 public:
     Generation();
     ~Generation();
-    void pushBlock(llvm::BasicBlock *block, bool forceGlobal = false);
+    void pushBlock(llvm::BasicBlock *block, unsigned int scopeType = core::ScopeType::Logical);
     void popBlock();
     llvm::Module* getModule() const;
+    core::Scope* getCurrentFunctionScope();
 
 protected:
     llvm::Module *module;
@@ -35,6 +36,7 @@ protected:
     core::Scope rootScope;
     core::Scope *scope;
     core::CastGraph castGraph;
+    core::Function *currentFunction;
 
     core::Type boolType;
     core::Type intType;
