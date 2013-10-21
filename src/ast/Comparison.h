@@ -11,11 +11,12 @@ namespace ast {
 class Comparison : public Expression
 {
 public:
-    Comparison(int operatorId, std::list<Expression *> *expressions);
+    Comparison(Expression *firstExpr);
     virtual ~Comparison();
 
-    int operatorId;
-    std::list<Expression *> *expressions;
+    void add(int operatorId, Expression *expression);
+    std::list<Expression *> expressions;
+    std::list<int> operators;
 };
 
 } // namespace ast

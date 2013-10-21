@@ -440,11 +440,11 @@ static void lexer_input(char *buf, int *result, int max);
     [0-9]+                      { yyReturnId(TINTEGER); }
     "="                         { return TEQUAL; }
     "=="                        { yyReturnId(TCEQ); }
-    "!="                        { return TCNE; }
-    "<"                         { return TCLT; }
-    "<="                        { return TCLE; }
-    ">"                         { return TCGT; }
-    ">="                        { return TCGE; }
+    "!="                        { yyReturnId(TCNE); }
+    "<"                         { yyReturnId(TCLT); }
+    "<="                        { yyReturnId(TCLE); }
+    ">"                         { yyReturnId(TCGT); }
+    ">="                        { yyReturnId(TCGE); }
     "."                         { return TDOT; }
     ","                         { lexPushState(lex_state_skipnl); return TCOMMA; }
     "+"                         { lexPushState(lex_state_skipnl); yyReturnId(TPLUS); }

@@ -52,6 +52,7 @@ ast::Operator* makeOperatorCall(ast::Expression *subject, int operatorId, ast::E
         ast::Identifier *ident;
         ast::TypeIdentifier *type_ident;
         ast::VariableDeclaration *var_decl;
+        ast::Comparison *comp;
         std::list<ast::VariableDeclaration*> *args_decl;
         std::list<ast::Expression*> *expr_list;
         std::string *string;
@@ -105,7 +106,8 @@ using namespace sugar;
 %type <type_ident> typename
 %type <stmt> stmt var_decl func_decl program_stmt action_stmt
 %type <args_decl> func_decl_args
-%type <expr_list> func_call_args comp_eq
+%type <expr_list> func_call_args
+%type <comp> comp_diff comp_eq comp_less comp_more
 %type <expr> value expr func_call if_expr if if_else
 %type <block> program block_stmts program_stmts block
 
@@ -117,16 +119,20 @@ using namespace sugar;
 %left TELSE
 %left BLOCK
 %nonassoc TOK_END_INSTR
-%left LOOSE_COMP
 %left LOOSE_FUNC_CALL
 %left FUNC_CALL_ARG
 %left CALL_IMPL
 %left CALL_EXPL
+%left LOOSE_COMP
+%left TCEQ
+%nonassoc TCNE
+%left TCLT TCLE
+%left TCGT TCGE
 %left TCOMMA
 %left TIF
 %left TPLUS TMINUS
 %left TMUL TDIV
-%left TCEQ
+
 
 %start program
 
@@ -166,12 +172,30 @@ expr			: expr TMUL expr { $$ = makeOperatorCall($1, TMUL, $3); }
                 | TLPAREN expr TRPAREN { $$ = $2; }
                 | value { $$ = $1; }
                 | ident %prec LOOSE_FUNC_CALL { $$ = $1; /* WARNING: var or implicit function call without args */ }
-                | comp_eq %prec LOOSE_COMP { $$ = new ast::Comparison(TCEQ, $<expr_list>1); }
+                | comp_diff %prec LOOSE_COMP{ $$ = $1; }
+                | comp_eq %prec LOOSE_COMP{ $$ = $1; }
+                | comp_less %prec LOOSE_COMP{ $$ = $1; }
+                | comp_more %prec LOOSE_COMP{ $$ = $1; }
                 | if_else { $$ = $1; }
                 ;
 
-comp_eq         : expr TCEQ expr { $$ = new std::list<ast::Expression*>(); $$->push_back($1); $$->push_back($3); }
-                | comp_eq TCEQ expr { $1->push_back($3); $$ = $1; }
+comp_diff       : expr TCNE expr { $$ = new ast::Comparison($1); $$->add(TCNE, $3); }
+                ;
+
+comp_eq         : expr TCEQ expr { $$ = new ast::Comparison($1); $$->add(TCEQ, $3); }
+                | comp_eq TCEQ expr  { $1->add(TCEQ, $3); $$ = $1; }
+                ;
+
+comp_less       : expr TCLT expr  { $$ = new ast::Comparison($1); $$->add(TCLT, $3); }
+                | expr TCLE expr { $$ = new ast::Comparison($1); $$->add(TCLE, $3); }
+                | comp_less TCLT expr { $1->add(TCLT, $3); $$ = $1; }
+                | comp_less TCLE expr { $1->add(TCLE, $3); $$ = $1; }
+                ;
+
+comp_more       : expr TCGT expr { $$ = new ast::Comparison($1); $$->add(TCGT, $3); }
+                | expr TCGE expr { $$ = new ast::Comparison($1); $$->add(TCGE, $3); }
+                | comp_more TCGT expr  { $1->add(TCGT, $3); $$ = $1; }
+                | comp_more TCGE expr{ $1->add(TCGE, $3); $$ = $1; }
                 ;
 
 func_call       : ident func_call_args %prec CALL_IMPL {

@@ -3,17 +3,20 @@
 namespace sugar {
 namespace ast {
 
-Comparison::Comparison(int operatorId, std::list<Expression *> *expressions) : Expression(Node::eComparison)
+Comparison::Comparison(Expression *expression) : Expression(Node::eComparison)
 {
-    this->expressions = expressions;
-    this->operatorId = operatorId;
+    this->expressions.push_back(expression);
+}
+
+void Comparison::add(int operatorId, Expression *expression){
+    this->expressions.push_back(expression);
+    this->operators.push_back(operatorId);
 }
 
 Comparison::~Comparison(){
-    for(std::list<Expression *>::iterator i = expressions->begin(); i != expressions->end(); i++){
+    for(std::list<Expression *>::iterator i = expressions.begin(); i != expressions.end(); i++){
        delete (*i);
     }
-    delete expressions;
 }
 
 } // namespace ast

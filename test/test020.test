@@ -1,0 +1,5 @@
+Int a = 5
+if 5 <= a < 6
+	echo 5
+else
+	echo 6

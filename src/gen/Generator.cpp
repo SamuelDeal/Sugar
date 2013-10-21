@@ -88,12 +88,60 @@ llvm::Value* Generator::generateDivFloatFloat(std::vector<llvm::Value*> values, 
     return gen.builder.CreateFDiv(values[0], values[1]);
 }
 
+llvm::Value* Generator::generateEqBoolBool(std::vector<llvm::Value*> values, Generation &gen){
+    return gen.builder.CreateICmpEQ(values[0], values[1]);
+}
+
 llvm::Value* Generator::generateEqIntInt(std::vector<llvm::Value*> values, Generation &gen){
     return gen.builder.CreateICmpEQ(values[0], values[1]);
 }
 
 llvm::Value* Generator::generateEqFloatFloat(std::vector<llvm::Value*> values, Generation &gen){
     return gen.builder.CreateFCmpUEQ(values[0], values[1]);
+}
+
+llvm::Value* Generator::generateNEqBoolBool(std::vector<llvm::Value*> values, Generation &gen){
+    return gen.builder.CreateICmpNE(values[0], values[1]);
+}
+
+llvm::Value* Generator::generateNEqIntInt(std::vector<llvm::Value*> values, Generation &gen){
+    return gen.builder.CreateICmpNE(values[0], values[1]);
+}
+
+llvm::Value* Generator::generateNEqFloatFloat(std::vector<llvm::Value*> values, Generation &gen){
+    return gen.builder.CreateFCmpUNE(values[0], values[1]);
+}
+
+llvm::Value* Generator::generateLessIntInt(std::vector<llvm::Value*> values, Generation &gen){
+    return gen.builder.CreateICmpSLT(values[0], values[1]);
+}
+
+llvm::Value* Generator::generateLessFloatFloat(std::vector<llvm::Value*> values, Generation &gen){
+    return gen.builder.CreateFCmpULT(values[0], values[1]);
+}
+
+llvm::Value* Generator::generateLessEqIntInt(std::vector<llvm::Value*> values, Generation &gen){
+    return gen.builder.CreateICmpSLE(values[0], values[1]);
+}
+
+llvm::Value* Generator::generateLessEqFloatFloat(std::vector<llvm::Value*> values, Generation &gen){
+    return gen.builder.CreateFCmpULE(values[0], values[1]);
+}
+
+llvm::Value* Generator::generateMoreIntInt(std::vector<llvm::Value*> values, Generation &gen){
+    return gen.builder.CreateICmpSGT(values[0], values[1]);
+}
+
+llvm::Value* Generator::generateMoreFloatFloat(std::vector<llvm::Value*> values, Generation &gen){
+    return gen.builder.CreateFCmpUGT(values[0], values[1]);
+}
+
+llvm::Value* Generator::generateMoreEqIntInt(std::vector<llvm::Value*> values, Generation &gen){
+    return gen.builder.CreateICmpSGE(values[0], values[1]);
+}
+
+llvm::Value* Generator::generateMoreEqFloatFloat(std::vector<llvm::Value*> values, Generation &gen){
+    return gen.builder.CreateFCmpUGE(values[0], values[1]);
 }
 
 llvm::Value* Generator::generateIntToFloatCast(std::vector<llvm::Value*> values, Generation &gen){
@@ -146,6 +194,12 @@ void Generator::initCore(Generation &gen){
     gen.rootScope.addOperator(op);
 
     types.clear();
+    types.push_back(&gen.boolType);
+    types.push_back(&gen.boolType);
+    op = new Operator(TCEQ, &AbstractGenerator::generateEqBoolBool, &gen.boolType, types);
+    gen.rootScope.addOperator(op);
+
+    types.clear();
     types.push_back(&gen.intType);
     types.push_back(&gen.intType);
     op = new Operator(TCEQ, &AbstractGenerator::generateEqIntInt, &gen.boolType, types);
@@ -154,9 +208,74 @@ void Generator::initCore(Generation &gen){
     types.clear();
     types.push_back(&gen.floatType);
     types.push_back(&gen.floatType);
-    op = new Operator(TDIV, &AbstractGenerator::generateEqFloatFloat, &gen.boolType, types);
+    op = new Operator(TCEQ, &AbstractGenerator::generateEqFloatFloat, &gen.boolType, types);
     gen.rootScope.addOperator(op);
 
+    types.clear();
+    types.push_back(&gen.boolType);
+    types.push_back(&gen.boolType);
+    op = new Operator(TCNE, &AbstractGenerator::generateNEqBoolBool, &gen.boolType, types);
+    gen.rootScope.addOperator(op);
+
+    types.clear();
+    types.push_back(&gen.intType);
+    types.push_back(&gen.intType);
+    op = new Operator(TCNE, &AbstractGenerator::generateNEqIntInt, &gen.boolType, types);
+    gen.rootScope.addOperator(op);
+
+    types.clear();
+    types.push_back(&gen.floatType);
+    types.push_back(&gen.floatType);
+    op = new Operator(TCNE, &AbstractGenerator::generateNEqFloatFloat, &gen.boolType, types);
+    gen.rootScope.addOperator(op);
+
+    types.clear();
+    types.push_back(&gen.intType);
+    types.push_back(&gen.intType);
+    op = new Operator(TCLT, &AbstractGenerator::generateLessIntInt, &gen.boolType, types);
+    gen.rootScope.addOperator(op);
+
+    types.clear();
+    types.push_back(&gen.floatType);
+    types.push_back(&gen.floatType);
+    op = new Operator(TCLT, &AbstractGenerator::generateLessFloatFloat, &gen.boolType, types);
+    gen.rootScope.addOperator(op);
+
+    types.clear();
+    types.push_back(&gen.intType);
+    types.push_back(&gen.intType);
+    op = new Operator(TCLE, &AbstractGenerator::generateLessEqIntInt, &gen.boolType, types);
+    gen.rootScope.addOperator(op);
+
+    types.clear();
+    types.push_back(&gen.floatType);
+    types.push_back(&gen.floatType);
+    op = new Operator(TCLE, &AbstractGenerator::generateLessEqFloatFloat, &gen.boolType, types);
+    gen.rootScope.addOperator(op);
+
+    types.clear();
+    types.push_back(&gen.intType);
+    types.push_back(&gen.intType);
+    op = new Operator(TCGT, &AbstractGenerator::generateMoreIntInt, &gen.boolType, types);
+    gen.rootScope.addOperator(op);
+
+    types.clear();
+    types.push_back(&gen.floatType);
+    types.push_back(&gen.floatType);
+    op = new Operator(TCGT, &AbstractGenerator::generateMoreFloatFloat, &gen.boolType, types);
+    gen.rootScope.addOperator(op);
+
+    types.clear();
+    types.push_back(&gen.intType);
+    types.push_back(&gen.intType);
+    op = new Operator(TCGE, &AbstractGenerator::generateMoreEqIntInt, &gen.boolType, types);
+    gen.rootScope.addOperator(op);
+
+    types.clear();
+    types.push_back(&gen.floatType);
+    types.push_back(&gen.floatType);
+    op = new Operator(TCGE, &AbstractGenerator::generateMoreEqFloatFloat, &gen.boolType, types);
+    gen.rootScope.addOperator(op);
 
     llvm::Function *printf = generatePrintfFunction(gen);
 
@@ -457,7 +576,7 @@ llvm::Value* Generator::parse(ast::FunctionCall *node, Generation &gen){
 
 llvm::Value* Generator::parse(ast::Operator *node, Generation &gen){
 #if DEBUG_GENERATOR
-    std::cerr << "\n*** Operator call generation " << std::endl;
+    std::string debugTypes;
 #endif
     std::vector<llvm::Value*> args;
     std::list<ast::Expression*>::const_iterator it;
@@ -465,8 +584,14 @@ llvm::Value* Generator::parse(ast::Operator *node, Generation &gen){
     for (it = node->args->begin(); it != node->args->end(); it++) {
         args.push_back(parseNode(*it, gen));
         types.push_back((*it)->getType());
+#if DEBUG_GENERATOR
+        debugTypes += " " + (*it)->getType()->getName();
+#endif
     }
 
+#if DEBUG_GENERATOR
+    std::cerr << "\n*** Operator call generation: " << node->operatorId << debugTypes << std::endl;
+#endif
     std::list<Operator*> operators = gen.scope->getOps(node->operatorId);
 
     if (operators.empty()){
@@ -491,7 +616,7 @@ llvm::Value* Generator::parse(ast::Operator *node, Generation &gen){
                 return call;
             }
         }
-        std::cout << "no operator match given arguments" << std::endl;
+        std::cout << "no operator match given arguments : " <<  node->operatorId << std::endl;
         return NULL;
     }
 }
@@ -578,15 +703,9 @@ llvm::Value* Generator::parse(ast::FunctionDeclaration *node, Generation &gen){
     }
 
     if(*returnType != gen.voidType){
-#if DEBUG_GENERATOR
-        std::cerr << "!!!! Creating Return" << std::endl;
-#endif
         gen.builder.CreateRet(blockReturnValue);
     }
     else{
-#if DEBUG_GENERATOR
-        std::cerr << "!!!! Creating Empty Return" << std::endl;
-#endif
         gen.builder.CreateRetVoid();
     }
 
@@ -684,7 +803,6 @@ llvm::Value* Generator::parse(ast::IfExpression *node, Generation &gen){
         std::cerr << "skip phi value" << std::endl;
 #endif
         node->setType(gen.voidType);
-        //gen.builder.SetInsertPoint(mergeBB);
         return NULL;
     }
     else{
@@ -695,29 +813,25 @@ llvm::Value* Generator::parse(ast::IfExpression *node, Generation &gen){
         llvm::PHINode *phiValue = gen.builder.CreatePHI(*node->getType(), 2);
         phiValue->addIncoming(thenValue, thenBB);
         phiValue->addIncoming(elseValue, elseBB);
-        //gen.builder.SetInsertPoint(mergeBB);
         return phiValue;
     }
 
 }
 
 llvm::Value* Generator::parse(ast::Comparison *node, Generation &gen){
-    if(node->expressions->size() < 2){
-        std::cout << "At least 2 expressions are required for comparison" << std::endl;
-        return NULL;
-    }
     node->setType(gen.boolType);
 
-    std::list<ast::Expression *>::iterator it = node->expressions->begin();
+    std::list<ast::Expression *>::iterator it = node->expressions.begin();
+    std::list<int>::iterator opIt = node->operators.begin();
     ast::Expression *left = *it;
     llvm::Value *result = NULL;
     llvm::Value *valueComp = NULL;
 
-    for(++it; it != node->expressions->end(); it++){
+    for(++it; it != node->expressions.end(); it++){
         std::list<ast::Expression*> *args = new std::list<ast::Expression*>();
         args->push_back(left);
         args->push_back(*it);
-        ast::Operator *operatorNode = new ast::Operator(node->operatorId, args);
+        ast::Operator *operatorNode = new ast::Operator(*opIt, args);
         valueComp = parse(operatorNode, gen);
         if(valueComp == NULL){
             std::cout << "comparison failed" << std::endl;
@@ -736,6 +850,7 @@ llvm::Value* Generator::parse(ast::Comparison *node, Generation &gen){
         else{
             result = gen.builder.CreateAnd(result, valueComp);
         }
+        ++opIt;
     }
     return result;
 }
