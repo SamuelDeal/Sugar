@@ -24,6 +24,7 @@ struct IndentContext {
 struct LexerContext {
     IndentInfo indentContext;
     unsigned int lineIndents;
+    unsigned int commentStartCount;
     std::queue<int> tokens;
     std::queue<int> latentTokens;
     std::stack<IndentContext*> indents;

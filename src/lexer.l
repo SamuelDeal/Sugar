@@ -43,6 +43,9 @@ LexerContext lexerCtx;
 
 const char * const  state_names[] = {
 "INITIAL",
+"normal",
+"skipline",
+"mlcomment",
 "newline",
 "skipnl",
 "spaceaware",
@@ -129,6 +132,9 @@ static void lexer_input(char *buf, int *result, int max);
 
 
  /* This is a sub-parser (state) for indentation-sensitive scoping */
+%s lex_state_normal
+%s lex_state_skipline
+%s lex_state_mlcomment
 %s lex_state_newline
 %s lex_state_skipnl
 %s lex_state_spaceaware
@@ -174,7 +180,43 @@ static void lexer_input(char *buf, int *result, int max);
     }
 }
 
+<INITIAL>{
+    "#!" {
+        lexPushState(lex_state_skipline);
+    }
+    \r\n|\r|\n {
+        lexPushState(lex_state_normal);
+    }
 
+    . {
+        yyless(0);
+        lexPushState(lex_state_normal);
+    }
+}
+
+<lex_state_skipline>{
+    \r\n|\r|\n {
+        yyless(0);
+        lexPopState();
+    }
+
+    . { // do nothing
+    }
+}
+
+<lex_state_mlcomment>{
+    \*+\/          {
+        if(lexerCtx.commentStartCount < yyleng){
+            lexPopState();
+        }
+    }
+
+    \r\n|\r|\n  {
+    }
+
+    . {
+    }
+}
 
 <lex_state_newline>{
     "else"                          {
@@ -419,16 +461,21 @@ static void lexer_input(char *buf, int *result, int max);
     }
 }
 
-<INITIAL>{
+
+
+<lex_state_normal>{
     [\t ]*                      {}
     \r\n|\r|\n                  {
         lexerCtx.pendingEndInstr = true;
         lexerCtx.lineIndents = 0;
         lexPushState(lex_state_newline);
     }
-}
-
-<INITIAL>{
+    "//"                        { lexPushState(lex_state_skipline); }
+    \#[ \t]                     { lexPushState(lex_state_skipline); }
+    \/\*+                       {
+        lexPushState(lex_state_mlcomment);
+        lexerCtx.commentStartCount = yyleng -1;
+    }
     "return"                    { return TRETURN; }
     "if"                        { return TIF; }
     "else"                      { return TELSE; }
