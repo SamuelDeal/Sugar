@@ -144,9 +144,19 @@ llvm::Value* Generator::generateMoreEqFloatFloat(std::vector<llvm::Value*> value
     return gen.builder.CreateFCmpUGE(values[0], values[1]);
 }
 
+llvm::Value* Generator::generateAndBoolBool(std::vector<llvm::Value*> values, Generation &gen){
+    return gen.builder.CreateAnd(values[0], values[1]);
+
+}
+
+llvm::Value* Generator::generateOrBoolBool(std::vector<llvm::Value*> values, Generation &gen){
+    return gen.builder.CreateOr(values[0], values[1]);
+}
+
 llvm::Value* Generator::generateIntToFloatCast(std::vector<llvm::Value*> values, Generation &gen){
     return gen.builder.CreateFPToSI(values[0], gen.floatType);
 }
+
 
 void Generator::initCore(Generation &gen){
     gen.castGraph.addImplicitCast(new Cast(&AbstractGenerator::generateIntToFloatCast, &gen.floatType, &gen.intType));
@@ -275,6 +285,18 @@ void Generator::initCore(Generation &gen){
     types.push_back(&gen.floatType);
     types.push_back(&gen.floatType);
     op = new Operator(TCGE, &AbstractGenerator::generateMoreEqFloatFloat, &gen.boolType, types);
+    gen.rootScope.addOperator(op);
+
+    types.clear();
+    types.push_back(&gen.boolType);
+    types.push_back(&gen.boolType);
+    op = new Operator(TAND, &AbstractGenerator::generateAndBoolBool, &gen.boolType, types);
+    gen.rootScope.addOperator(op);
+
+    types.clear();
+    types.push_back(&gen.boolType);
+    types.push_back(&gen.boolType);
+    op = new Operator(TOR, &AbstractGenerator::generateOrBoolBool, &gen.boolType, types);
     gen.rootScope.addOperator(op);
 
     llvm::Function *printf = generatePrintfFunction(gen);

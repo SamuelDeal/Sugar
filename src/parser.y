@@ -124,6 +124,8 @@ using namespace sugar;
 %left CALL_IMPL
 %left CALL_EXPL
 %left LOOSE_COMP
+%left TOR
+%left TAND
 %left TCEQ
 %nonassoc TCNE
 %left TCLT TCLE
@@ -168,6 +170,8 @@ expr			: expr TMUL expr { $$ = makeOperatorCall($1, TMUL, $3); }
                 | expr TDIV expr { $$ = makeOperatorCall($1, TDIV, $3); }
                 | expr TPLUS expr { $$ = makeOperatorCall($1, TPLUS, $3); }
                 | expr TMINUS expr { $$ = makeOperatorCall($1, TMINUS, $3); }
+                | expr TAND expr { $$ = makeOperatorCall($1, TAND, $3); }
+                | expr TOR expr { $$ = makeOperatorCall($1, TOR, $3); }
                 | func_call { $$ = $1; }
                 | TLPAREN expr TRPAREN { $$ = $2; }
                 | value { $$ = $1; }

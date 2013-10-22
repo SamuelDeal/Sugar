@@ -434,6 +434,10 @@ static void lexer_input(char *buf, int *result, int max);
     "else"                      { return TELSE; }
     "true"                      { return TTRUE; }
     "false"                     { return TFALSE; }
+    "and"                       { return TAND; }
+    "&&"                        { return TAND; }
+    "or"                        { return TOR;  }
+    "||"                        { return TOR;  }
     [A-Z][a-zA-Z0-9_\?]*        { yyReturnId(TTYPENAME); }
     [a-z_][a-zA-Z0-9_\?!]*      { lexPushState(lex_state_spaceaware); yyReturnId(TIDENTIFIER); }
     [0-9]+\.[0-9]*              { yyReturnId(TDOUBLE); }

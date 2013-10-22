@@ -61,6 +61,8 @@ public:
     virtual llvm::Value* generateMoreFloatFloat(std::vector<llvm::Value*> values, Generation &gen);
     virtual llvm::Value* generateMoreEqIntInt(std::vector<llvm::Value*> values, Generation &gen);
     virtual llvm::Value* generateMoreEqFloatFloat(std::vector<llvm::Value*> values, Generation &gen);
+    virtual llvm::Value* generateAndBoolBool(std::vector<llvm::Value*> values, Generation &gen);
+    virtual llvm::Value* generateOrBoolBool(std::vector<llvm::Value*> values, Generation &gen);
     virtual llvm::Value* generateIntToFloatCast(std::vector<llvm::Value*> values, Generation &gen);
 
 protected:
