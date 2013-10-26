@@ -12,6 +12,8 @@ parser.output2
 parser.ps
 lexer.hpp
 lexer.impl.hpp
+lexer.inter.hpp
+lexer.batch.hpp
 lexer.h
 sugari
 sugarc

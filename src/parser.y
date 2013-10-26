@@ -81,7 +81,6 @@ using namespace sugar;
 }
 
 
-%debug
 %error-verbose
 /*%glr-parser*/
 
