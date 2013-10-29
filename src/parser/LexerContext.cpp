@@ -1,6 +1,6 @@
 #include "LexerContext.h"
 
-#include "../config.h"
+#include "../config_checked.h"
 
 #include "../ast/Statement.h"
 #include "../ast/Block.h"
@@ -19,15 +19,12 @@ LexerContext::LexerContext(ast::Block *programStmts,
     pendingEndInstr = false;
     lineIndents = 0;
 
-    indentContext.spaceSize = -1;
     indentContext.style = IndentInfo::UNDEFINED;
+    indentContext.spaceSize = INDENT_SPACE_SIZE;
 
     indents.push(new IndentContext());
     indents.top()->start = 0;
     indents.top()->current = 0;
-#ifdef INDENT_SPACE_SIZE
-    indentContext.spaceSize = INDENT_SPACE_SIZE;
-#endif
 }
 
 void LexerContext::onProgramStmt(sugar::ast::Statement *stmt){

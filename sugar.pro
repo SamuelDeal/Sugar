@@ -155,7 +155,8 @@ HEADERS += \
     src/gen/InteractiveParser.h \
     src/parser/BatchParser.h \
     src/parser/InteractiveParser.h \
-    src/parser/LexerContext.h
+    src/parser/LexerContext.h \
+    src/config_checked.h
 
 OTHER_FILES += \
     parser.y \

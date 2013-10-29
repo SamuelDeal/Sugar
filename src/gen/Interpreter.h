@@ -2,6 +2,7 @@
 #define SUGAR_GEN_INTERPRETER_H
 
 #include "Generator.h"
+#include "../config_checked.h"
 
 namespace llvm {
     class ExecutionEngine;
@@ -19,8 +20,11 @@ class Interpreter : public Generator
 public:
     Interpreter();
     virtual ~Interpreter();
-
-    core::Variable* run(ast::Statement *stmt, ast::Block *programBlock);
+#if SHELL_USE_COLOR
+    void run(ast::Statement *stmt, ast::Block *programBlock, bool interactive, bool useColor);
+#else
+    void run(ast::Statement *stmt, ast::Block *programBlock, bool interactive);
+#endif
 
 protected:
     struct Interpretation {
@@ -32,8 +36,14 @@ protected:
 
     std::map<ast::Block *, Interpretation*> _interpretations;
 
+#if SHELL_USE_COLOR
+    Interpretation* initProgram(ast::Block *programBlock, bool useColor);
+    Interpretation* getOrCreateInterpretation(ast::Block *programBlock, bool useColor);
+#else
     Interpretation* initProgram(ast::Block *programBlock);
     Interpretation* getOrCreateInterpretation(ast::Block *programBlock);
+#endif
+
 
     void printResult(llvm::Value *value, ast::Statement *stmt, Generation &gen) const;
 

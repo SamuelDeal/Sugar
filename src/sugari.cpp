@@ -1,7 +1,7 @@
 #include <iostream>
 #include <stdio.h>
 
-#include "config.h"
+#include "config_checked.h"
 
 #include "parser/InteractiveParser.h"
 
@@ -18,14 +18,10 @@ using namespace sugar;
 
 ast::Block* programBlock = new ast::Block();
 gen::Interpreter *interpreter;
-
-
-
-void echoResult(core::Variable *v){
-    if(v != NULL){
-        std::cout << "=> " << v->toString() << std::endl;
-    }
-}
+bool interactive = false;
+#if SHELL_USE_COLOR
+bool useColor = false;
+#endif
 
 void onMainStatement(sugar::ast::Statement *stmt){
    if(stmt->getKind() == ast::Node::eFunctionDeclaration){
@@ -40,11 +36,19 @@ void onMainStatement(sugar::ast::Statement *stmt){
             ast::Assignment *assign = new ast::Assignment(stmtVar->id, stmtVar->assign);
             stmtVar->assign = NULL;
             programBlock->stmts.push_back(stmtVar);
-            echoResult(interpreter->run(assign, programBlock));
+#if SHELL_USE_COLOR
+            interpreter->run(stmt, programBlock, interactive, useColor);
+#else
+            interpreter->run(stmt, programBlock, interactive);
+#endif
         }
     }
     else {
-        echoResult(interpreter->run(stmt, programBlock));
+#if SHELL_USE_COLOR
+        interpreter->run(stmt, programBlock, interactive, useColor);
+#else
+        interpreter->run(stmt, programBlock, interactive);
+#endif
     }
 }
 
@@ -64,6 +68,14 @@ int main(int argc, char **argv)
 
     interpreter = new gen::Interpreter();
     programBlock = new ast::Block();
+
+    interactive = (stdin == file);
+#ifndef OS_WINDOWS
+    interactive = interactive && (isatty(fileno(file)) == 1);
+#if SHELL_USE_COLOR
+    useColor = interactive && (isatty(fileno(stdout)) == 1);
+#endif
+#endif
 
     parser::InteractiveParser parser;
     parser.parse(file, *programBlock, onMainStatement);

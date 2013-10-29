@@ -4,19 +4,13 @@
 #include <unistd.h>
 #endif
 
-#include "../config.h"
+#include "../config_checked.h"
 #define INTERACTIVE_INPUT 1
-
-#ifdef OS_WINDOWS
-#undef SHELL_USE_COLOR
-#define SHELL_USE_COLOR 0
-#endif
-
 #include "lexer.inter.hpp"
 
 
 
-#if defined(LIBREADLINE) && LIBREADLINE && !defined(OS_WINDOWS)
+#if LIBREADLINE
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -176,9 +170,9 @@ void InteractiveParser::parse(FILE *file, ast::Block &programStmts, stmtFunction
 
     bool interactive = (stdin == file);
 #ifndef OS_WINDOWS
-     interactive = interactive && (isatty(fileno(file)) == 1);
+    interactive = interactive && (isatty(fileno(file)) == 1);
 #endif
-     yyset_debug(DEBUG_LEXER, scanner);
+    yyset_debug(DEBUG_LEXER, scanner);
 
     LexerContext lexerCtx(&programStmts, interactive, callback);
     yylex_init_extra(&lexerCtx, &scanner);

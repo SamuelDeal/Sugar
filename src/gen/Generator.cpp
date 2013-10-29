@@ -7,7 +7,7 @@
 #include <llvm/Instructions.h>
 #include <llvm/InstrTypes.h>
 
-#include "../config.h"
+#include "../config_checked.h"
 #include "../ast/all.h"
 #include "../core/Type.h"
 #include "../core/Function.h"

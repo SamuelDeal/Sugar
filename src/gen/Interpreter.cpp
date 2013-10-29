@@ -1,6 +1,6 @@
 #include "Interpreter.h"
 
-#include "../config.h"
+#include "../config_checked.h"
 #include "../utils.h"
 #include "GeneratedCode.h"
 #include "../ast/Block.h"
@@ -42,12 +42,19 @@ Interpreter::Interpretation::~Interpretation() {
     delete generatedCode;
 }
 
+#if SHELL_USE_COLOR
+Interpreter::Interpretation* Interpreter::initProgram(ast::Block *block, bool useColor){
+#else
 Interpreter::Interpretation* Interpreter::initProgram(ast::Block *block){
+#endif
     Generation *generation = new Generation();
     Generation &gen = *generation;
 
     llvm::InitializeNativeTarget();
     gen.module = new llvm::Module("sugar", gen.context);
+#if SHELL_USE_COLOR
+    gen.useColor = useColor;
+#endif
     initCore(gen);
 
     Interpretation *result = new Interpretation();
@@ -57,12 +64,174 @@ Interpreter::Interpretation* Interpreter::initProgram(ast::Block *block){
     return result;
 }
 
+#if SHELL_USE_COLOR
+Interpreter::Interpretation* Interpreter::getOrCreateInterpretation(ast::Block *programBlock, bool useColor){
+#else
 Interpreter::Interpretation* Interpreter::getOrCreateInterpretation(ast::Block *programBlock){
+#endif
     std::map<ast::Block *, Interpretation*>::iterator it = _interpretations.find(programBlock);
     if(it == _interpretations.end()){
+#if SHELL_USE_COLOR
+        it = _interpretations.insert(std::make_pair(programBlock, initProgram(programBlock, useColor))).first;
+#else
         it = _interpretations.insert(std::make_pair(programBlock, initProgram(programBlock))).first;
+#endif
     }
     return it->second;
+}
+
+
+
+#if SHELL_USE_COLOR
+void Interpreter::run(ast::Statement *stmt, ast::Block *programBlock, bool interactive, bool useColor) {
+#else
+void Interpreter::run(ast::Statement *stmt, ast::Block *programBlock, bool interactive) {
+#endif
+    static int count = 0;
+    ++count;
+
+#if DEBUG_GENERATOR
+    std::cerr << "Generating code..." << std::endl;
+#endif
+    Interpretation &intr = *getOrCreateInterpretation(programBlock, useColor);
+    Generation &gen = *(intr.generatedCode->getGeneration());
+    std::vector<llvm::Type*> argTypes;
+    llvm::FunctionType *ftype = llvm::FunctionType::get(gen.voidType, llvm::makeArrayRef(argTypes), false);
+
+    int stmtCount = 0;
+    for(std::list<ast::Statement*>::iterator it = programBlock->stmts.begin();
+            it != programBlock->stmts.end(); it++){
+        if(stmtCount >= intr.stmtCount){
+            parseNode(*it, gen);
+        }
+        ++stmtCount;
+    }
+    intr.stmtCount = stmtCount;
+
+    llvm::Function *runFunction = llvm::Function::Create(ftype, llvm::GlobalValue::InternalLinkage,
+        "__shell_invoke__"+ std::to_string(count), intr.generatedCode->getModule());
+    llvm::BasicBlock *runBlock = llvm::BasicBlock::Create(gen.context, "entry", runFunction, 0);
+
+    gen.pushBlock(runBlock, ScopeType::Main|ScopeType::Function);
+    llvm::Value *value = parseNode(stmt, gen);
+    if(interactive){
+        printResult(value, stmt, gen);
+    }
+    gen.popBlock();
+
+#if DEBUG_GENERATOR
+    std::cerr << "Create final empty return." << std::endl;
+    std::cerr << gen.scopeHierarchy() << std::endl;
+#endif
+    gen.builder.CreateRetVoid();
+
+#if DEBUG_GENERATOR
+    std::cerr << "Code is generated.\n";
+#endif
+#if DEBUG_IR
+    // Print the bytecode in a human-readable format
+    //   to see if our program compiled properly
+    llvm::PassManager pm;
+    pm.add(createPrintModulePass(&llvm::errs()));
+    pm.run(*(intr.generatedCode->getModule()));
+#endif
+#if DEBUG_GENERATOR
+    std::cerr << "\n =========== Running code... =============" << std::endl;
+#endif
+    std::vector<llvm::GenericValue> noargs;
+    intr.ee->runFunction(runFunction, noargs);
+#if DEBUG_GENERATOR
+    std::cerr << "\n =========== Code was run. ==============" << std::endl;
+#endif
+}
+
+void Interpreter::printResult(llvm::Value *value, ast::Statement *stmt, Generation &gen) const {
+    if(stmt->getType() != &gen.voidType){
+        std::list<Function*> functions = gen.scope->getFuncs("_ _echo_result");
+        std::list<const Type *> types;
+        std::vector<llvm::Value*> args;
+        types.push_back(stmt->getType());
+        args.push_back(value);
+        for(std::list<Function *>::iterator it = functions.begin(); it != functions.end(); it++){
+            Function *func = *it;
+            if(func->match(types, gen.castGraph)){
+                if(func->isNative()){
+                    CALL_MEMBER_FN(*this, func->getNative())(args, gen);
+                }
+                else{
+                    gen.builder.CreateCall(*func, makeArrayRef(args));
+                }
+            }
+        }
+    }
+}
+
+Function* Interpreter::generateEchoBoolFunction(llvm::Function* printfFn, Generation &gen) const {
+    std::vector<llvm::Type*> echo_arg_types;
+    echo_arg_types.push_back(gen.boolType);
+
+    llvm::FunctionType* echo_type = llvm::FunctionType::get(gen.voidType, echo_arg_types, false);
+    llvm::Function *func = llvm::Function::Create(
+                echo_type, llvm::Function::InternalLinkage,
+                llvm::Twine("echo_bool"),
+                gen.module
+           );
+    llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
+    const char *trueConstValue;
+#if SHELL_USE_COLOR
+    if(gen.useColor){
+        trueConstValue = "\x1b[32mtrue\x1b[0m\n";
+    }
+    else {
+#endif
+        trueConstValue = "true\n";
+#if SHELL_USE_COLOR
+    }
+#endif
+    llvm::Constant *trueStrConst = llvm::ConstantDataArray::getString(gen.context, trueConstValue);
+    llvm::GlobalVariable *trueVar = new llvm::GlobalVariable(
+            *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
+            strlen(trueConstValue)+1), true, llvm::GlobalValue::PrivateLinkage, trueStrConst, "echo_true_str");
+    std::vector<llvm::Constant*> indicesTrue;
+    indicesTrue.push_back(gen.intZero);
+    indicesTrue.push_back(gen.intZero);
+    llvm::Constant *trueRef = llvm::ConstantExpr::getGetElementPtr(trueVar, indicesTrue);
+
+    const char *falseConstValue;
+#if SHELL_USE_COLOR
+    if(gen.useColor){
+        falseConstValue = "\x1b[32mfalse\x1b[0m\n";
+    }
+    else {
+#endif
+        falseConstValue = "false\n";
+#if SHELL_USE_COLOR
+    }
+#endif
+    llvm::Constant *falseStrConst = llvm::ConstantDataArray::getString(gen.context, falseConstValue);
+    llvm::GlobalVariable *falseVar = new llvm::GlobalVariable(
+            *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
+            strlen(falseConstValue)+1), true, llvm::GlobalValue::PrivateLinkage, falseStrConst, "echo_false_str");
+    std::vector<llvm::Constant*> indicesFalse;
+    indicesFalse.push_back(gen.intZero);
+    indicesFalse.push_back(gen.intZero);
+    llvm::Constant *falseRef = llvm::ConstantExpr::getGetElementPtr(falseVar, indicesFalse);
+
+    llvm::Function::arg_iterator argsValues = func->arg_begin();
+    llvm::Value* toPrint = argsValues++;
+    toPrint->setName("toPrint");
+
+    llvm::ICmpInst* testResult = new llvm::ICmpInst(*bblock, llvm::ICmpInst::ICMP_NE, toPrint, gen.falseConst, "");
+    llvm::SelectInst* displayed = llvm::SelectInst::Create(testResult, trueRef, falseRef, "", bblock);
+
+    std::vector<llvm::Value*> args;
+    args.push_back(displayed);
+    llvm::CallInst *call = llvm::CallInst::Create(printfFn, makeArrayRef(args), "", bblock);
+    llvm::ReturnInst::Create(gen.context, bblock);
+
+    std::list<const Type *> types;
+    types.push_back(&gen.boolType);
+    return new Function("echo", func, &gen.voidType, types);
 }
 
 void Interpreter::initCore(Generation &gen) const {
@@ -211,148 +380,6 @@ void Interpreter::initCore(Generation &gen) const {
     gen.rootScope.addFunction(generateEchoDoubleResultFunction(printf, gen));
 }
 
-
-core::Variable* Interpreter::run(ast::Statement *stmt, ast::Block *programBlock) {
-    static int count = 0;
-    ++count;
-
-#if DEBUG_GENERATOR
-    std::cerr << "Generating code..." << std::endl;
-#endif
-    Interpretation &intr = *getOrCreateInterpretation(programBlock);
-    Generation &gen = *(intr.generatedCode->getGeneration());
-    std::vector<llvm::Type*> argTypes;
-    llvm::FunctionType *ftype = llvm::FunctionType::get(gen.voidType, llvm::makeArrayRef(argTypes), false);
-
-    int stmtCount = 0;
-    for(std::list<ast::Statement*>::iterator it = programBlock->stmts.begin();
-            it != programBlock->stmts.end(); it++){
-        if(stmtCount >= intr.stmtCount){
-            parseNode(*it, gen);
-        }
-        ++stmtCount;
-    }
-    intr.stmtCount = stmtCount;
-
-    llvm::Function *runFunction = llvm::Function::Create(ftype, llvm::GlobalValue::InternalLinkage,
-        "__shell_invoke__"+ std::to_string(count), intr.generatedCode->getModule());
-    llvm::BasicBlock *runBlock = llvm::BasicBlock::Create(gen.context, "entry", runFunction, 0);
-
-    gen.pushBlock(runBlock, ScopeType::Main|ScopeType::Function);
-    llvm::Value *value = parseNode(stmt, gen);
-    printResult(value, stmt, gen);
-    gen.popBlock();
-
-    //llvm::ReturnInst::Create(gen.context, runBlock);
-#if DEBUG_GENERATOR
-    std::cerr << "Create final empty return." << std::endl;
-    std::cerr << gen.scopeHierarchy() << std::endl;
-#endif
-    gen.builder.CreateRetVoid();
-
-#if DEBUG_GENERATOR
-    std::cerr << "Code is generated.\n";
-#endif
-#if DEBUG_IR
-    // Print the bytecode in a human-readable format
-    //   to see if our program compiled properly
-    llvm::PassManager pm;
-    pm.add(createPrintModulePass(&llvm::errs()));
-    pm.run(*(intr.generatedCode->getModule()));
-#endif
-#if DEBUG_GENERATOR
-    std::cerr << "\n =========== Running code... =============" << std::endl;
-#endif
-    std::vector<llvm::GenericValue> noargs;
-    intr.ee->runFunction(runFunction, noargs);
-#if DEBUG_GENERATOR
-    std::cerr << "\n =========== Code was run. ==============" << std::endl;
-#endif
-    if(stmt->getType() == &gen.voidType){
-        return NULL;
-    }
-    else{
-        return new core::Variable("result", *(stmt->getType()), value);
-    }
-}
-
-void Interpreter::printResult(llvm::Value *value, ast::Statement *stmt, Generation &gen) const {
-    if(stmt->getType() != &gen.voidType){
-        std::list<Function*> functions = gen.scope->getFuncs("_ _echo_result");
-        std::list<const Type *> types;
-        std::vector<llvm::Value*> args;
-        types.push_back(stmt->getType());
-        args.push_back(value);
-        for(std::list<Function *>::iterator it = functions.begin(); it != functions.end(); it++){
-            Function *func = *it;
-            if(func->match(types, gen.castGraph)){
-                if(func->isNative()){
-                    CALL_MEMBER_FN(*this, func->getNative())(args, gen);
-                }
-                else{
-                    gen.builder.CreateCall(*func, makeArrayRef(args));
-                }
-            }
-        }
-    }
-}
-
-Function* Interpreter::generateEchoBoolFunction(llvm::Function* printfFn, Generation &gen) const {
-    std::vector<llvm::Type*> echo_arg_types;
-    echo_arg_types.push_back(gen.boolType);
-
-    llvm::FunctionType* echo_type = llvm::FunctionType::get(gen.voidType, echo_arg_types, false);
-    llvm::Function *func = llvm::Function::Create(
-                echo_type, llvm::Function::InternalLinkage,
-                llvm::Twine("echo_bool"),
-                gen.module
-           );
-    llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
-#if SHELL_USE_COLOR
-    const char *trueConstValue = "\x1b[32mtrue\x1b[0m\n";
-#else
-    const char *trueConstValue = "true\n";
-#endif
-    llvm::Constant *trueStrConst = llvm::ConstantDataArray::getString(gen.context, trueConstValue);
-    llvm::GlobalVariable *trueVar = new llvm::GlobalVariable(
-            *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
-            strlen(trueConstValue)+1), true, llvm::GlobalValue::PrivateLinkage, trueStrConst, "echo_true_str");
-    std::vector<llvm::Constant*> indicesTrue;
-    indicesTrue.push_back(gen.intZero);
-    indicesTrue.push_back(gen.intZero);
-    llvm::Constant *trueRef = llvm::ConstantExpr::getGetElementPtr(trueVar, indicesTrue);
-
-#if SHELL_USE_COLOR
-    const char *falseConstValue = "\x1b[32mfalse\x1b[0m\n";
-#else
-    const char *falseConstValue = "false\n";
-#endif
-    llvm::Constant *falseStrConst = llvm::ConstantDataArray::getString(gen.context, falseConstValue);
-    llvm::GlobalVariable *falseVar = new llvm::GlobalVariable(
-            *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
-            strlen(falseConstValue)+1), true, llvm::GlobalValue::PrivateLinkage, falseStrConst, "echo_false_str");
-    std::vector<llvm::Constant*> indicesFalse;
-    indicesFalse.push_back(gen.intZero);
-    indicesFalse.push_back(gen.intZero);
-    llvm::Constant *falseRef = llvm::ConstantExpr::getGetElementPtr(falseVar, indicesFalse);
-
-    llvm::Function::arg_iterator argsValues = func->arg_begin();
-    llvm::Value* toPrint = argsValues++;
-    toPrint->setName("toPrint");
-
-    llvm::ICmpInst* testResult = new llvm::ICmpInst(*bblock, llvm::ICmpInst::ICMP_NE, toPrint, gen.falseConst, "");
-    llvm::SelectInst* displayed = llvm::SelectInst::Create(testResult, trueRef, falseRef, "", bblock);
-
-    std::vector<llvm::Value*> args;
-    args.push_back(displayed);
-    llvm::CallInst *call = llvm::CallInst::Create(printfFn, makeArrayRef(args), "", bblock);
-    llvm::ReturnInst::Create(gen.context, bblock);
-
-    std::list<const Type *> types;
-    types.push_back(&gen.boolType);
-    return new Function("echo", func, &gen.voidType, types);
-}
-
 Function* Interpreter::generateEchoIntFunction(llvm::Function* printfFn, Generation &gen) const {
     std::vector<llvm::Type*> echo_arg_types;
     echo_arg_types.push_back(gen.intType);
@@ -366,10 +393,16 @@ Function* Interpreter::generateEchoIntFunction(llvm::Function* printfFn, Generat
            );
     llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
 
+    const char *constValue;
 #if SHELL_USE_COLOR
-    const char *constValue = "\x1b[32m%lld\n\x1b[0m\n";
-#else
-    const char *constValue = "%lld\n";
+    if(gen.useColor){
+        constValue = "\x1b[32m%lld\n\x1b[0m\n";
+    }
+    else {
+#endif
+        constValue = "%lld\n";
+#if SHELL_USE_COLOR
+    }
 #endif
     llvm::Constant *format_const = llvm::ConstantDataArray::getString(gen.context, constValue);
     llvm::GlobalVariable *var = new llvm::GlobalVariable(
@@ -410,10 +443,16 @@ Function* Interpreter::generateEchoDoubleFunction(llvm::Function* printfFn, Gene
            );
     llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
 
+    const char *constValue;
 #if SHELL_USE_COLOR
-    const char *constValue = "\x1b[32m%f\n\x1b[0m\n";
-#else
-    const char *constValue = "%f\n";
+    if(gen.useColor){
+        constValue = "\x1b[32m%f\n\x1b[0m\n";
+    }
+    else {
+#endif
+        constValue = "%f\n";
+#if SHELL_USE_COLOR
+    }
 #endif
     llvm::Constant *format_const = llvm::ConstantDataArray::getString(gen.context, constValue);
     llvm::GlobalVariable *var = new llvm::GlobalVariable(
@@ -453,10 +492,17 @@ Function* Interpreter::generateEchoBoolResultFunction(llvm::Function* printfFn, 
                 gen.module
            );
     llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
+
+    const char *trueConstValue;
 #if SHELL_USE_COLOR
-    const char *trueConstValue = "=> \x1b[33mtrue\x1b[0m\n";
-#else
-    const char *trueConstValue = "=> true\n";
+    if(gen.useColor){
+        trueConstValue = "\x1b[33m=> true\n\x1b[0m\n";
+    }
+    else {
+#endif
+        trueConstValue = "=> true\n";
+#if SHELL_USE_COLOR
+    }
 #endif
     llvm::Constant *trueStrConst = llvm::ConstantDataArray::getString(gen.context, trueConstValue);
     llvm::GlobalVariable *trueVar = new llvm::GlobalVariable(
@@ -467,10 +513,16 @@ Function* Interpreter::generateEchoBoolResultFunction(llvm::Function* printfFn, 
     indicesTrue.push_back(gen.intZero);
     llvm::Constant *trueRef = llvm::ConstantExpr::getGetElementPtr(trueVar, indicesTrue);
 
+    const char *falseConstValue;
 #if SHELL_USE_COLOR
-    const char *falseConstValue = "=> \x1b[33mfalse\x1b[0m\n";
-#else
-    const char *falseConstValue = "=> false\n";
+    if(gen.useColor){
+        falseConstValue = "\x1b[33m=> false\n\x1b[0m\n";
+    }
+    else {
+#endif
+        falseConstValue = "=> false\n";
+#if SHELL_USE_COLOR
+    }
 #endif
     llvm::Constant *falseStrConst = llvm::ConstantDataArray::getString(gen.context, falseConstValue);
     llvm::GlobalVariable *falseVar = new llvm::GlobalVariable(
@@ -511,10 +563,16 @@ Function* Interpreter::generateEchoIntResultFunction(llvm::Function* printfFn, G
            );
     llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
 
+    const char *constValue;
 #if SHELL_USE_COLOR
-    const char *constValue = "=> \x1b[33m%lld\n\x1b[0m\n";
-#else
-    const char *constValue = "=> %lld\n";
+    if(gen.useColor){
+        constValue = "\x1b[33m=> %lld\n\x1b[0m\n";
+    }
+    else {
+#endif
+        constValue = "=> %lld\n";
+#if SHELL_USE_COLOR
+    }
 #endif
     llvm::Constant *format_const = llvm::ConstantDataArray::getString(gen.context, constValue);
     llvm::GlobalVariable *var = new llvm::GlobalVariable(
@@ -555,10 +613,16 @@ Function* Interpreter::generateEchoDoubleResultFunction(llvm::Function* printfFn
            );
     llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
 
+    const char *constValue;
 #if SHELL_USE_COLOR
-    const char *constValue = "=> \x1b[33m%f\n\x1b[0m\n";
-#else
-    const char *constValue = "=> %f\n";
+    if(gen.useColor){
+        constValue = "\x1b[33m=> %f\n\x1b[0m\n";
+    }
+    else {
+#endif
+        constValue = "=> %f\n";
+#if SHELL_USE_COLOR
+    }
 #endif
     llvm::Constant *format_const = llvm::ConstantDataArray::getString(gen.context, constValue);
     llvm::GlobalVariable *var = new llvm::GlobalVariable(

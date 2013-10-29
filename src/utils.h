@@ -3,7 +3,7 @@
 
 #include <string>
 #include <cstddef>
-#include "config.h"
+#include "config_checked.h"
 
 #define CALL_MEMBER_FN(object,ptrToMember)  ((object).*(ptrToMember))
 

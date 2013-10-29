@@ -1,6 +1,6 @@
 %top{
 
-#include "../config.h"
+#include "../config_checked.h"
 #include "LexerContext.h"
 
 #define YY_EXTRA_TYPE sugar::parser::LexerContext*
@@ -14,11 +14,7 @@
 #include <iostream>
 #include <string.h>
 
-#ifndef INDENT_ALLOW_MIXED
-#define INDENT_ALLOW_MIXED 0
-#endif
-
-#if defined(DEBUG_LEXER) && DEBUG_LEXER
+#if DEBUG_LEXER
 #define LOG_LEXER(str, ...) fprintf(stderr, "\n" str "\n", ##__VA_ARGS__)
 #else
 #define LOG_LEXER(str, ...)
@@ -64,7 +60,7 @@ void yyerror(YYLTYPE *locp, sugar::parser::LexerContext *lexerCtx, const char *e
     yyget_lval(yyscanner)->string = new std::string(strdup(yytext), yyleng); \
     return foundToken;
 
-#if INTERACTIVE_INPUT && ((defined(LIBREADLINE) && LIBREADLINE && !defined(OS_WINDOWS)) || (defined(LIBEDIT) && LIBEDIT))
+#if INTERACTIVE_INPUT && (LIBREADLINE || LIBEDIT)
 
 #undef  YY_INPUT
 #define YY_INPUT(buf,result,max_size) \
@@ -271,7 +267,7 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
         if(yyget_extra(yyscanner)->indentContext.style == IndentInfo::UNDEFINED){
             LOG_LEXER("HERE 1.1 !!! %d", yyget_extra(yyscanner)->indentContext.style);
             yyget_extra(yyscanner)->indentContext.style = IndentInfo::SPACE;
-#ifndef INDENT_SPACE_SIZE
+#if INDENT_SPACE_SIZE > 0
             yyget_extra(yyscanner)->indentContext.spaceSize = yyleng;
 #endif
         }

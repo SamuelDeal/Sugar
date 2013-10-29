@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <stack>
 
-#include "../config.h"
+#include "../config_checked.h"
 
 #define YY_HEADER_EXPORT_START_CONDITIONS 1
 

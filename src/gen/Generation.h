@@ -7,6 +7,7 @@
 #include "../core/Scope.h"
 #include "../core/CastGraph.h"
 #include "../core/Type.h"
+#include "../config_checked.h"
 
 namespace llvm {
     class Module;
@@ -37,6 +38,10 @@ protected:
     core::Scope *scope;
     core::CastGraph castGraph;
     core::Function *currentFunction;
+
+#if SHELL_USE_COLOR
+    bool useColor;
+#endif
 
     core::Type boolType;
     core::Type intType;

@@ -1,6 +1,6 @@
 #include "Generation.h"
 
-#include "../config.h"
+#include "../config_checked.h"
 
 #include <iostream>
 
@@ -17,7 +17,8 @@ Generation::Generation() :
     intZero(llvm::Constant::getNullValue(intType)),
     rootScope(NULL, NULL, core::ScopeType::Global),
     scope(&rootScope),
-    builder(context)
+    builder(context),
+    useColor(false)
 {
     scope->addType(&boolType);
     scope->addType(&intType);
