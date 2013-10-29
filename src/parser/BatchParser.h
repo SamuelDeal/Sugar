@@ -17,9 +17,6 @@ class BatchParser
 public:
     BatchParser();
     void parse(FILE *file, ast::Block &programStmts) const;
-
-protected:
-    void onProgramStmt(ast::Statement *stmt);
 };
 
 } // namespace parser

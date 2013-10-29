@@ -1,6 +1,6 @@
 #include "BatchParser.h"
 
-#include "../config_checked.h"
+#include "../config.h"
 #define INTERACTIVE_INPUT 0
 #include "lexer.batch.hpp"
 
@@ -11,6 +11,10 @@ BatchParser::BatchParser()
 {
 }
 
+void BatchParser_onProgramStmt(ast::Block *programStmts, ast::Statement *newStmt){
+    programStmts->stmts.push_back(newStmt);
+}
+
 void BatchParser::parse(FILE *file, ast::Block &programStmts) const {
     yydebug = DEBUG_PARSER;
 
@@ -18,7 +22,7 @@ void BatchParser::parse(FILE *file, ast::Block &programStmts) const {
     yylex_init(&scanner);
     yyset_debug(DEBUG_LEXER, scanner);
 
-    LexerContext lexerCtx(&programStmts, false);
+    LexerContext lexerCtx(&programStmts, false, BatchParser_onProgramStmt);
     yylex_init_extra(&lexerCtx, &scanner);
     lexerCtx.scanner = scanner;
 
@@ -29,6 +33,8 @@ void BatchParser::parse(FILE *file, ast::Block &programStmts) const {
     yylex_destroy(scanner);
     fclose(file);
 }
+
+
 
 } // namespace parser
 } // namespace sugar

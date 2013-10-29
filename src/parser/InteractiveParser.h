@@ -15,13 +15,16 @@ namespace ast {
 
 namespace parser {
 
-typedef void (*stmtFunction)(sugar::ast::Statement *stmt);
+typedef void (*stmtFunction)(ast::Block *programStmts, ast::Statement *stmt);
 
 class InteractiveParser
 {
 public:
     InteractiveParser();
     void parse(FILE *file, ast::Block &programStmt, stmtFunction callback = NULL) const;
+
+protected:
+    void onProgramStmt(ast::Block *programStmts, ast::Statement *newStmt);
 };
 
 } // namespace parser

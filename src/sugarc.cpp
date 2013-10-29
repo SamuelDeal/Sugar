@@ -28,8 +28,5 @@ int main(int argc, char **argv)
 
     gen::Compiler compiler;
     bool compilSuccess = compiler.compile(programBlock, argv[(argc == 2 ? 1 : 2)]);
-    if(compilSuccess){
-        return 1;
-    }
-    return 0;
+    return compilSuccess ? 0 : 1;
 }

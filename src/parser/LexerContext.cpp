@@ -8,11 +8,11 @@
 namespace sugar {
 namespace parser {
 
-LexerContext::LexerContext(ast::Block *programStmts,
+LexerContext::LexerContext(ast::Block *programStmtsArg,
                             bool interactiveArg, stmtFunction callback)
 {
     interactive = interactiveArg;
-    _programStmts = programStmts;
+    programStmts = programStmtsArg;
     _callback = callback;
 
     eof = false;
@@ -28,10 +28,7 @@ LexerContext::LexerContext(ast::Block *programStmts,
 }
 
 void LexerContext::onProgramStmt(sugar::ast::Statement *stmt){
-    _programStmts->stmts.push_back(stmt);
-    if(_callback != NULL){
-        _callback(stmt);
-    }
+    _callback(programStmts, stmt);
 }
 
 } // namespace parser

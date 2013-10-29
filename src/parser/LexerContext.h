@@ -31,13 +31,13 @@ namespace ast {
 
 namespace parser {
 
-typedef void (*stmtFunction)(sugar::ast::Statement *stmt);
+typedef void (*stmtFunction)(ast::Block *programStmts, ast::Statement *stmt);
 
 
 class LexerContext
 {
 public:
-    LexerContext(ast::Block *programStmts, bool interactive, stmtFunction callback = NULL);
+    LexerContext(ast::Block *programStmts, bool interactive, stmtFunction callback);
     void onProgramStmt(sugar::ast::Statement *stmt);
 
     IndentInfo indentContext;
@@ -50,10 +50,10 @@ public:
     bool eof;
     void *scanner;
     bool interactive;
+    ast::Block *programStmts;
 
 protected:
     stmtFunction _callback;
-    ast::Block *_programStmts   ;
 };
 
 } // namespace parser

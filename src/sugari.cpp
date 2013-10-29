@@ -23,7 +23,7 @@ bool interactive = false;
 bool useColor = false;
 #endif
 
-void onMainStatement(sugar::ast::Statement *stmt){
+void onMainStatement(ast::Block *programStmts, sugar::ast::Statement *stmt){
    if(stmt->getKind() == ast::Node::eFunctionDeclaration){
         programBlock->stmts.push_back(stmt);
     }
