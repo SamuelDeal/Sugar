@@ -5,6 +5,8 @@
 #include <cstddef>
 #include "config.h"
 
+#define CALL_MEMBER_FN(object,ptrToMember)  ((object).*(ptrToMember))
+
 #if __cplusplus < 201103L //C++11
 namespace std {
     std::string to_string(int i);

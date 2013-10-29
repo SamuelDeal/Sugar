@@ -64,7 +64,7 @@ void yyerror(YYLTYPE *locp, sugar::parser::LexerContext *lexerCtx, const char *e
     yyget_lval(yyscanner)->string = new std::string(strdup(yytext), yyleng); \
     return foundToken;
 
-#if INTERACTIVE_INPUT && ((defined(LIBREADLINE) && LIBREADLINE) || (defined(LIBEDIT) && LIBEDIT))
+#if INTERACTIVE_INPUT && ((defined(LIBREADLINE) && LIBREADLINE && !defined(OS_WINDOWS)) || (defined(LIBEDIT) && LIBEDIT))
 
 #undef  YY_INPUT
 #define YY_INPUT(buf,result,max_size) \
@@ -356,7 +356,17 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
     }
 
     \r\n|\r|\n*                     {
+#if INTERACTIVE_INPUT
+    if(yyget_extra(yyscanner)->interactive){
         lexPopState(yyscanner);
+        yyget_extra(yyscanner)->pendingEndInstr = true;
+    }
+    else {
+#endif
+        lexPopState(yyscanner);
+#if INTERACTIVE_INPUT
+    }
+#endif
     }
 
     .                               {
@@ -436,9 +446,18 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 <lex_state_normal>{
     [\t ]*                      {}
     \r\n|\r|\n                  {
+#if INTERACTIVE_INPUT
+    if(yyget_extra(yyscanner)->interactive){
+        return TOK_END_INSTR;
+    }
+    else {
+#endif
         yyget_extra(yyscanner)->pendingEndInstr = true;
         yyget_extra(yyscanner)->lineIndents = 0;
         lexPushState(lex_state_newline, yyscanner);
+#if INTERACTIVE_INPUT
+    }
+#endif
     }
     "//"                        { lexPushState(lex_state_skipline, yyscanner); }
     \#[ \t]                     { lexPushState(lex_state_skipline, yyscanner); }

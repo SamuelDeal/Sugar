@@ -11,12 +11,21 @@
 #include "ast/Block.h"
 #include "ast/VariableDeclaration.h"
 #include "ast/Assignment.h"
+#include "core/Variable.h"
 
 using namespace std;
 using namespace sugar;
 
 ast::Block* programBlock = new ast::Block();
 gen::Interpreter *interpreter;
+
+
+
+void echoResult(core::Variable *v){
+    if(v != NULL){
+        std::cout << "=> " << v->toString() << std::endl;
+    }
+}
 
 void onMainStatement(sugar::ast::Statement *stmt){
    if(stmt->getKind() == ast::Node::eFunctionDeclaration){
@@ -31,15 +40,13 @@ void onMainStatement(sugar::ast::Statement *stmt){
             ast::Assignment *assign = new ast::Assignment(stmtVar->id, stmtVar->assign);
             stmtVar->assign = NULL;
             programBlock->stmts.push_back(stmtVar);
-            interpreter->run(assign, programBlock);
+            echoResult(interpreter->run(assign, programBlock));
         }
     }
     else {
-        interpreter->run(stmt, programBlock);
+        echoResult(interpreter->run(stmt, programBlock));
     }
 }
-
-
 
 int main(int argc, char **argv)
 {

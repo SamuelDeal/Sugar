@@ -205,4 +205,34 @@ OTHER_FILES += \
     test/test001.test \
     test/test001.expected \
     src/parser/parser.y \
-    src/parser/lexer.l
+    src/parser/lexer.l \
+    test/test022.test \
+    test/test022.expected \
+    test/test021.test \
+    test/test021.expected \
+    test/test020.test \
+    test/test020.expected \
+    test/test019.test \
+    test/test025.test \
+    test/test025.expected \
+    test/test024.test \
+    test/test024.expected \
+    test/test023.test \
+    test/test023.expected \
+    test/test019.expected \
+    test/test018.test \
+    test/test018.expected \
+    test/test017.test \
+    test/test017.expected \
+    test/test016.test \
+    test/test016.expected \
+    test/test015.test \
+    test/test015.expected \
+    test/test014.test \
+    test/test014.expected \
+    test/test013.test \
+    test/test013.expected \
+    test/test012.test \
+    test/test012.expected \
+    test/test011.test \
+    test/test011.expected

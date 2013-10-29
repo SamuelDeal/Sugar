@@ -1,4 +1,8 @@
+#include <llvm/Support/raw_ostream.h>
+#include <llvm/Value.h>
+
 #include "Variable.h"
+#include "../utils.h"
 
 namespace sugar {
 namespace core {
@@ -18,6 +22,13 @@ const Type& Variable::getType() const {
 
 Variable::operator llvm::Value*() const {
     return _value;
+}
+
+std::string Variable::toString() const {
+    std::string str;
+    llvm::raw_string_ostream os(str);
+    _value->print(os);
+    return os.str();
 }
 
 } // namespace core

@@ -66,7 +66,7 @@ public:
     virtual llvm::Value* generateIntToFloatCast(std::vector<llvm::Value*> values, Generation &gen) const;
 
 protected:
-    void initCore(Generation &gen) const;
+    virtual void initCore(Generation &gen) const;
 
     llvm::Value* parseNode(ast::Node *node, Generation &gen) const;
     virtual llvm::Value* parse(ast::Assignment *node, Generation &gen) const;

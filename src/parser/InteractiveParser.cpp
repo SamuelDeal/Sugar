@@ -6,11 +6,17 @@
 
 #include "../config.h"
 #define INTERACTIVE_INPUT 1
+
+#ifdef OS_WINDOWS
+#undef SHELL_USE_COLOR
+#define SHELL_USE_COLOR 0
+#endif
+
 #include "lexer.inter.hpp"
 
 
 
-#if defined(LIBREADLINE) && LIBREADLINE
+#if defined(LIBREADLINE) && LIBREADLINE && !defined(OS_WINDOWS)
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -43,7 +49,19 @@ static void lexer_input (char *buf, int  *result, int max, void* yyscanner) {
         if (rl_start) {
             free(rl_start);
         }
-        rl_start = readline ("sugar> ");
+        unsigned short scopes = yyget_extra(yyscanner)->indents.size();
+        std::string prompt = "sugar";
+        if(yyget_extra(yyscanner)->pendingEndInstr){
+            prompt += "*";
+        }
+        if(scopes > 1){
+            prompt += "("+std::to_string(scopes)+")";
+        }
+        prompt += "> ";
+#if SHELL_USE_COLOR
+        prompt = "\x1b[33m"+prompt+"\x1b[0m";
+#endif
+        rl_start = readline (prompt.c_str());
         if (rl_start == NULL) { //end of file
             *result = 0;
             rl_len = 0;
@@ -151,10 +169,6 @@ InteractiveParser::InteractiveParser()
 }
 
 void InteractiveParser::parse(FILE *file, ast::Block &programStmts, stmtFunction callback) const {
-#if defined(LIBREADLINE) && LIBREADLINE
-
-#endif
-    //yy_flex_debug = DEBUG_LEXER;
     yydebug = DEBUG_PARSER;
 
     yyscan_t scanner;
@@ -164,6 +178,7 @@ void InteractiveParser::parse(FILE *file, ast::Block &programStmts, stmtFunction
 #ifndef OS_WINDOWS
      interactive = interactive && (isatty(fileno(file)) == 1);
 #endif
+     yyset_debug(DEBUG_LEXER, scanner);
 
     LexerContext lexerCtx(&programStmts, interactive, callback);
     yylex_init_extra(&lexerCtx, &scanner);

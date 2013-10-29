@@ -19,6 +19,7 @@ public:
 
     const std::string& getName() const;
     const Type& getType() const;
+    std::string toString() const;
 
     operator llvm::Value*() const;
 

@@ -20,9 +20,7 @@ public:
     Interpreter();
     virtual ~Interpreter();
 
-    //virtual GeneratedCode* generate(ast::Block *block);
-
-    void run(ast::Statement *stmt, ast::Block *programBlock);
+    core::Variable* run(ast::Statement *stmt, ast::Block *programBlock);
 
 protected:
     struct Interpretation {
@@ -36,6 +34,18 @@ protected:
 
     Interpretation* initProgram(ast::Block *programBlock);
     Interpretation* getOrCreateInterpretation(ast::Block *programBlock);
+
+    void printResult(llvm::Value *value, ast::Statement *stmt, Generation &gen) const;
+
+    virtual void initCore(Generation &gen) const;
+
+    virtual core::Function* generateEchoBoolFunction(llvm::Function* printfFn, Generation &gen) const;
+    virtual core::Function* generateEchoIntFunction(llvm::Function* printfFn, Generation &gen) const;
+    virtual core::Function* generateEchoDoubleFunction(llvm::Function* printfFn, Generation &gen) const;
+
+    core::Function* generateEchoBoolResultFunction(llvm::Function* printfFn, Generation &gen) const;
+    core::Function* generateEchoIntResultFunction(llvm::Function* printfFn, Generation &gen) const;
+    core::Function* generateEchoDoubleResultFunction(llvm::Function* printfFn, Generation &gen) const;
 };
 
 } // namespace gen

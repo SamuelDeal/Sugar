@@ -12,11 +12,11 @@ BatchParser::BatchParser()
 }
 
 void BatchParser::parse(FILE *file, ast::Block &programStmts) const {
-    //yy_flex_debug = DEBUG_LEXER;
     yydebug = DEBUG_PARSER;
 
     yyscan_t scanner;
     yylex_init(&scanner);
+    yyset_debug(DEBUG_LEXER, scanner);
 
     LexerContext lexerCtx(&programStmts, false);
     yylex_init_extra(&lexerCtx, &scanner);

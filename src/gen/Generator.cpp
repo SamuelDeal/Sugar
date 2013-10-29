@@ -19,8 +19,6 @@
 #include "GeneratedCode.h"
 #include "Generation.h"
 
-#define CALL_MEMBER_FN(object,ptrToMember)  ((object).*(ptrToMember))
-
 namespace sugar {
 namespace gen {
 

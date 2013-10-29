@@ -12,4 +12,6 @@
 #define LIBREADLINE 1
 #define LIBEDITLINE 0
 
+#define SHELL_USE_COLOR 1
+
 #endif // CONFIG_H
