@@ -7,35 +7,38 @@
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/ExecutionEngine/JIT.h>
 
-#include "config.h"
-#define INTERACTIVE_INPUT 0
-#include "lexer.batch.hpp"
-
 #include "gen/Generator.h"
 #include "gen/GeneratedCode.h"
+#include "parser/BatchParser.h"
+#include "ast/Block.h"
 
 
 using namespace std;
 using namespace sugar;
 
-ast::Block* programBlock = new ast::Block();
+
 
 int main(int argc, char **argv)
 {
-    yy_flex_debug = DEBUG_LEXER;
-    yydebug = DEBUG_PARSER;
+    FILE *file;
     if(argc > 1){
-        yyin = fopen(argv[1],"r");
-        if(yyin == NULL){
+        file = fopen(argv[1],"r");
+        if(file == NULL){
             std::cout << "Unable to open " << argv[1] << std::endl;
             return 1;
         }
     }
+    else{
+        file = stdin;
+    }
 
-    yyparse();
+
+    ast::Block programBlock;
+    parser::BatchParser parser;    
+    parser.parse(file, programBlock);
 
     gen::Generator generator;
-    gen::GeneratedCode *generated = generator.generate(programBlock);
+    gen::GeneratedCode *generated = generator.generate(&programBlock);
 
 #if DEBUG_IR
     std::cerr << "\n========= Generated IR =========\n";
@@ -59,11 +62,3 @@ int main(int argc, char **argv)
 
     return 0;
 }
-
-void onMainStatement(sugar::ast::Statement *stmt){
-    programBlock->stmts.push_back(stmt);
-}
-
-
-
-

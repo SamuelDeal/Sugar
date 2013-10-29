@@ -24,50 +24,66 @@ Interpreter::Interpreter() {
 }
 
 Interpreter::~Interpreter() {
+    std::map<ast::Block *, Interpretation*>::iterator it;
+    for(it = _interpretations.begin(); it != _interpretations.end(); it++){
+        delete(it->second);
+        ++it;
+    }
 }
 
-GeneratedCode* Interpreter::generate(ast::Block *block){
+Interpreter::Interpretation::~Interpretation() {
+    delete ee;
+    delete generatedCode;
+}
+
+Interpreter::Interpretation* Interpreter::initProgram(ast::Block *block){
     Generation *generation = new Generation();
     Generation &gen = *generation;
 
     llvm::InitializeNativeTarget();
     gen.module = new llvm::Module("sugar", gen.context);
-
-    GeneratedCode *result = new GeneratedCode(NULL, generation, block);
     initCore(gen);
 
+    Interpretation *result = new Interpretation();
+    result->stmtCount = 0;
+    result->generatedCode = new GeneratedCode(NULL, generation, block);
+    result->ee = llvm::EngineBuilder(result->generatedCode->getModule()).create();
     return result;
 }
 
+Interpreter::Interpretation* Interpreter::getOrCreateInterpretation(ast::Block *programBlock){
+    std::map<ast::Block *, Interpretation*>::iterator it = _interpretations.find(programBlock);
+    if(it == _interpretations.end()){
+        it = _interpretations.insert(std::make_pair(programBlock, initProgram(programBlock))).first;
+    }
+    return it->second;
+}
 
-void Interpreter::run(ast::Statement *stmt, GeneratedCode *genCode) {
+
+void Interpreter::run(ast::Statement *stmt, ast::Block *programBlock) {
     static int count = 0;
     ++count;
 
 #if DEBUG_GENERATOR
     std::cerr << "Generating code..." << std::endl;
 #endif
-    Generation &gen = *genCode->getGeneration();
+    Interpretation &intr = *getOrCreateInterpretation(programBlock);
+    Generation &gen = *(intr.generatedCode->getGeneration());
     std::vector<llvm::Type*> argTypes;
     llvm::FunctionType *ftype = llvm::FunctionType::get(gen.voidType, llvm::makeArrayRef(argTypes), false);
-    llvm::ExecutionEngine *ee = genCode->getExecutionEngine();
-    if(NULL == ee){
-        ee = llvm::EngineBuilder(genCode->getModule()).create();
-        genCode->setExecutionEngine(ee);
-    }
 
-    ast::Block *block = genCode->getBlock();
     int stmtCount = 0;
-    for(std::list<ast::Statement*>::iterator it = block->stmts.begin(); it != block->stmts.end(); it++){
-        if(stmtCount >= genCode->getStatementCount()){
+    for(std::list<ast::Statement*>::iterator it = programBlock->stmts.begin();
+            it != programBlock->stmts.end(); it++){
+        if(stmtCount >= intr.stmtCount){
             parseNode(*it, gen);
         }
         ++stmtCount;
     }
-    genCode->setStatementCount(stmtCount);
+    intr.stmtCount = stmtCount;
 
     llvm::Function *runFunction = llvm::Function::Create(ftype, llvm::GlobalValue::InternalLinkage,
-        "__shell_invoke__"+ std::to_string(count), genCode->getModule());
+        "__shell_invoke__"+ std::to_string(count), intr.generatedCode->getModule());
     llvm::BasicBlock *runBlock = llvm::BasicBlock::Create(gen.context, "entry", runFunction, 0);
 
     gen.pushBlock(runBlock, ScopeType::Main|ScopeType::Function);
@@ -76,7 +92,8 @@ void Interpreter::run(ast::Statement *stmt, GeneratedCode *genCode) {
 
     //llvm::ReturnInst::Create(gen.context, runBlock);
 #if DEBUG_GENERATOR
-    std::cerr << "Create final empty return.\n";
+    std::cerr << "Create final empty return." << std::endl;
+    std::cerr << gen.scopeHierarchy() << std::endl;
 #endif
     gen.builder.CreateRetVoid();
 
@@ -88,13 +105,13 @@ void Interpreter::run(ast::Statement *stmt, GeneratedCode *genCode) {
     //   to see if our program compiled properly
     llvm::PassManager pm;
     pm.add(createPrintModulePass(&llvm::errs()));
-    pm.run(*genCode->getModule());
+    pm.run(*(intr.generatedCode->getModule()));
 #endif
 #if DEBUG_GENERATOR
     std::cerr << "\n =========== Running code... =============" << std::endl;
 #endif
     std::vector<llvm::GenericValue> noargs;
-    llvm::GenericValue v = ee->runFunction(runFunction, noargs);
+    llvm::GenericValue v = intr.ee->runFunction(runFunction, noargs);
 #if DEBUG_GENERATOR
     std::cerr << "\n =========== Code was run. ==============" << std::endl;
 #endif

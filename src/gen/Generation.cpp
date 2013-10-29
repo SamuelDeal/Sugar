@@ -1,4 +1,7 @@
 #include "Generation.h"
+
+#include "../config.h"
+
 #include <iostream>
 
 namespace sugar {
@@ -35,27 +38,41 @@ llvm::Module* Generation::getModule() const {
 void Generation::pushBlock(llvm::BasicBlock *block, unsigned int scopeType) {
     core::Scope* oldScope = scope;
     scope = new core::Scope(block, oldScope, scopeType);
-    if(scope->isFunction()){
-        builder.SetInsertPoint(block);
-    }
+#if DEBUG_GENERATOR
+    std::cerr << "adding scope: " << scope->toString() << std::endl;
+#endif
+#if DEBUG_GENERATOR
+    std::cerr << "auto define scope as insertion point: " << scope->toString() << std::endl;
+#endif
+    builder.SetInsertPoint(block);
+#if DEBUG_GENERATOR
+    std::cerr << scopeHierarchy() << std::endl;
+#endif
 }
 
 void Generation::popBlock() {
     core::Scope* oldScope = scope;
     scope = oldScope->getParent();
-    if(oldScope->isFunction() && scope != NULL && !scope->isGlobal()){
+#if DEBUG_GENERATOR
+    std::cerr << "removing scope point: " << oldScope->toString() << std::endl;
+#endif
+    if(scope != NULL && !scope->isGlobal()){
+#if DEBUG_GENERATOR
+        std::cerr << "auto define scope as insertion point: " << scope->toString() << std::endl;
+#endif
         builder.SetInsertPoint(*scope);
     }
     delete oldScope;
 }
 
-core::Scope* Generation::getCurrentFunctionScope() {
-    core::Scope* result = scope;
-    while(result != NULL && !result->isFunction()){
-        result = result->getParent();
-    }
-    if(result == NULL){
-        std::cout << "this should not happen" << std::endl;
+std::string Generation::scopeHierarchy() {
+    std::string result = "";
+    std::string indent = "";
+    core::Scope *current = scope;
+    while(current != NULL){
+        result += indent + "->" + current->toString() + "\n";
+        indent += "  ";
+        current = current->getParent();
     }
     return result;
 }

@@ -4,42 +4,28 @@
 #include <cstdlib>
 #include <stack>
 
-#include "config.h"
-
-#include "ast/all.h"
+#include "../config.h"
 
 #define YY_HEADER_EXPORT_START_CONDITIONS 1
 
-extern "C"  {
-
 #include "lexer.h"
-
-}
 
 using namespace sugar;
 
-extern ast::Block *programBlock;
-#include "lexer_ctx.h"
+void yyerror(YYLTYPE *locp, sugar::parser::LexerContext *lexerCtx, const char *err);
 
-extern LexerContext lexerCtx;
-void yyerror(const char *s);
-extern void onMainStatement(ast::Statement *);
-
-
-#define lexIndentOn()
-        /*yyIndentSensitiveStack.push(true); \
-        LOG_LEXER("Indent sensitive ON"); \
-        yyNLFound = false; */
-
-#define lexIndentOff()
-        /*yyIndentSensitiveStack.push(false); \
-        LOG_LEXER("Indent sensitive OFF");*/
 
 ast::Operator* makeOperatorCall(ast::Expression *subject, int operatorId, ast::Expression *arg1){
     std::list<ast::Expression *> *args = new std::list<ast::Expression *>();
     args->push_back(subject);
     args->push_back(arg1);
     return new ast::Operator(operatorId, args);
+}
+
+ast::Operator* makeUnaryOperatorCall(ast::Expression *subject, int operatorId, bool before){
+    std::list<ast::Expression *> *args = new std::list<ast::Expression *>();
+    args->push_back(subject);
+    return new ast::Operator(operatorId, args, before);
 }
 
 %}
@@ -60,67 +46,62 @@ ast::Operator* makeOperatorCall(ast::Expression *subject, int operatorId, ast::E
 }
 
 %code requires {
-#if ! defined YYLTYPE && ! defined YYLTYPE_IS_DECLARED
-#define YYLTYPE YYLTYPE
-typedef struct YYLTYPE
-{
-    int first_line;
-    int first_column;
-    int last_line;
-    int last_column;
-    char *filename;
-} YYLTYPE;
-#define yyltype YYLTYPE /* obsolescent; will be withdrawn */
-#define YYLTYPE_IS_DECLARED 1
-#define YYLTYPE_IS_TRIVIAL 1
-#endif
 
-#include "ast/all.h"
+#include <iostream>
+#include "../ast/all.h"
 
 using namespace sugar;
+
+namespace sugar{
+namespace parser{
+    class LexerContext;
+}
+}
+
 }
 
 
+%pure-parser
+%locations
+%defines
+%parse-param { sugar::parser::LexerContext *lexerCtx }
+%lex-param { void *scanner }
 %error-verbose
-/*%glr-parser*/
 
-/* Define our terminal symbols (tokens). This should
-   match our tokens.l lex file. We also define the node type
-   they represent.
- */
+%{
+#define scanner lexerCtx->scanner
+%}
+
+/* Token list */
 %token <string> TIDENTIFIER TINTEGER TDOUBLE TTYPENAME
 %token <token> TCNE TCLT TCLE TCGT TCGE TEQUAL
 %token <token> TLPAREN TRPAREN TLBRACE TRBRACE TCOMMA TDOT
 %token <token> TOK_INDENT TOK_BAD_INDENT TOK_OUTDENT TOK_END_INSTR TOK_NO_SPACE
 %token <token> TRETURN TIF TELSE TTRUE TFALSE
+%token <token> TCEQ TPLUS TMINUS TMUL TDIV TCOLON TOR TAND TWHILE TMINUSMINUS TPLUSPLUS
 
-%token <token> TCEQ TPLUS TMINUS TMUL TDIV
-
-/* Define the type of node our nonterminal symbols represent.
-   The types refer to the %union declaration above. Ex: when
-   we call an ident (defined by union type ident) we are really
-   calling an (NIdentifier*). It makes the compiler happy.
- */
+/* Types */
 %type <ident> ident
 %type <type_ident> typename
-%type <stmt> stmt var_decl func_decl program_stmt action_stmt
+%type <stmt> stmt var_decl func_decl program_stmt action_stmt while
 %type <args_decl> func_decl_args
 %type <expr_list> func_call_args
 %type <comp> comp_diff comp_eq comp_less comp_more
 %type <expr> value expr func_call if_expr if if_else
-%type <block> program block_stmts program_stmts block
+%type <block> program block_stmts program_stmts block pre_block
 
-/* Operator precedence for mathematical operators */
-
-
+/* Precedences */
+%nonassoc TCOLON
 %left IF_ALONE
 %left IF_ELSE
 %left TELSE
+%nonassoc COLON_EXPR
 %left BLOCK
 %nonassoc TOK_END_INSTR
 %left LOOSE_FUNC_CALL
 %left FUNC_CALL_ARG
 %left CALL_IMPL
+%nonassoc UNARY
 %left CALL_EXPL
 %left LOOSE_COMP
 %left TOR
@@ -142,8 +123,8 @@ using namespace sugar;
 program         : program_stmts { }
                 ;
 
-program_stmts   : program_stmt { onMainStatement($<stmt>1); }
-                | program_stmts program_stmt { onMainStatement($<stmt>2); }
+program_stmts   : program_stmt { lexerCtx->onProgramStmt($<stmt>1); }
+                | program_stmts program_stmt { lexerCtx->onProgramStmt($<stmt>2); }
                 | program_stmts TOK_END_INSTR {}
                 ;
 
@@ -154,6 +135,7 @@ block_stmts     : stmt TOK_END_INSTR { $$ = new ast::Block(); $$->stmts.push_bac
 stmt            : action_stmt { $$ = $1; }
                 | var_decl { $$ = $1; }
                 | if { $$ = new ast::ExpressionStmt($1); }
+                | while { $$ = $1; }
                 ;
 
 action_stmt     : expr { $$ = new ast::ExpressionStmt($1); }
@@ -171,6 +153,10 @@ expr			: expr TMUL expr { $$ = makeOperatorCall($1, TMUL, $3); }
                 | expr TMINUS expr { $$ = makeOperatorCall($1, TMINUS, $3); }
                 | expr TAND expr { $$ = makeOperatorCall($1, TAND, $3); }
                 | expr TOR expr { $$ = makeOperatorCall($1, TOR, $3); }
+                | ident TOK_NO_SPACE TPLUSPLUS %prec UNARY { $$ = makeUnaryOperatorCall($1, TPLUSPLUS, false); }
+                | ident TOK_NO_SPACE TMINUSMINUS %prec UNARY { $$ = makeUnaryOperatorCall($1, TMINUSMINUS, false); }
+                | TPLUSPLUS TOK_NO_SPACE ident %prec UNARY { $$ = makeUnaryOperatorCall($3, TPLUSPLUS, true); }
+                | TMINUSMINUS TOK_NO_SPACE ident %prec UNARY { $$ = makeUnaryOperatorCall($3, TMINUSMINUS, true); }
                 | func_call { $$ = $1; }
                 | TLPAREN expr TRPAREN { $$ = $2; }
                 | value { $$ = $1; }
@@ -205,7 +191,7 @@ func_call       : ident func_call_args %prec CALL_IMPL {
                     std::list<ast::Expression*>::const_iterator it;
                     for (it = $2->begin(); it != $2->end(); it++) {
                         if((*it)->isImplicitFunctionCall()){
-                            yyerror("implicit call forbidden here");
+                            yyerror(&yyloc, lexerCtx, "implicit call forbidden here");
                         }
                     }
                     $$ = new ast::FunctionCall($1, false, $2); }
@@ -227,7 +213,12 @@ var_decl        : typename ident { $$ = new ast::VariableDeclaration($1, $2); }
                 | typename ident TEQUAL expr { $$ = new ast::VariableDeclaration($1, $2, $4); }
                 ;
 
-block           : TLBRACE block_stmts TRBRACE { $$ = $2; }
+block           : pre_block { $$ = $1; }
+                | TCOLON pre_block { $$ = $2; }
+                | TCOLON expr %prec COLON_EXPR { $$ = new ast::Block(); $$->stmts.push_back(new ast::ExpressionStmt($2)); }
+                ;
+
+pre_block       : TLBRACE block_stmts TRBRACE { $$ = $2; }
                 | TLBRACE TRBRACE { $$ = new ast::Block(); }
                 | TOK_INDENT block_stmts TOK_OUTDENT { $$ = $2; }
                 ;
@@ -240,7 +231,7 @@ func_decl_args  : /*blank*/  { $$ = new std::list<ast::VariableDeclaration*>(); 
                 | func_decl_args TCOMMA var_decl { $1->push_back($<var_decl>3); }
                 ;
 
-if_expr         : TIF expr { $$ = $2; lexIndentOn(); }
+if_expr         : TIF expr { $$ = $2; }
                 ;
 
 if              : if_expr block %prec IF_ALONE { $$ = new ast::IfExpression($1, $2); }
@@ -250,7 +241,10 @@ if              : if_expr block %prec IF_ALONE { $$ = new ast::IfExpression($1, 
 if_else         : if_expr block else block { $$ = new ast::IfExpression($1, $2, $4); }
                 ;
 
-else            : TELSE { lexIndentOn(); }
+else            : TELSE { }
+                ;
+
+while           : TWHILE expr block { $$ = new ast::WhileStmt($2, $3); }
                 ;
 
 value           : TINTEGER { $$ = new ast::Constant(atoll($1->c_str())); delete $1; }
@@ -260,5 +254,3 @@ value           : TINTEGER { $$ = new ast::Constant(atoll($1->c_str())); delete 
                 ;
 
 %%
-
-void yyerror(const char *s) { std::printf("Error: %s\n", s);std::exit(1); }

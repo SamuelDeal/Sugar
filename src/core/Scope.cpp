@@ -1,20 +1,32 @@
 #include "Scope.h"
 
+#include "../config.h"
 #include "Function.h"
 #include "Operator.h"
 #include "Variable.h"
 #include "Type.h"
 
+#include <sstream>
 #include <iostream>
+#include <llvm/BasicBlock.h>
 
 namespace sugar {
 namespace core {
+
+int count = 0;
 
 Scope::Scope(llvm::BasicBlock *block, Scope *parent, unsigned int type) {
     _parent = parent;
     _block = block;
     _type = type;
     ifCount = 0;
+    loopCount = 0;
+    _id = ++count;
+    _returnReach = false;
+#if DEBUG_GENERATOR
+    std::cerr << "creating scope: " << this->toString() << std::endl;
+#endif
+
 }
 
 Scope::~Scope(){
@@ -30,6 +42,12 @@ bool Scope::isGlobal() const {
 
 bool Scope::isFunction() const {
     return (_type & ScopeType::Function) == ScopeType::Function;
+}
+
+bool Scope::isVarOwner() const {
+    return ((_type & ScopeType::Global) == ScopeType::Global) ||
+            ((_type & ScopeType::Function) == ScopeType::Function) ||
+            ((_type & ScopeType::Protected) == ScopeType::Protected);
 }
 
 void Scope::addFunction(Function *function){
@@ -109,6 +127,40 @@ Type* Scope::getType(const std::string &name) const {
 
 Scope::operator llvm::BasicBlock*() const {
     return _block;
+}
+
+core::Scope* Scope::getCurrentFunctionScope() {
+    core::Scope* result = this;
+    while(result != NULL && !result->isFunction()){
+        result = result->getParent();
+    }
+    return result;
+}
+
+core::Scope* Scope::getCurrentVarOwnerScope() {
+    core::Scope* result = this;
+    while(result != NULL && !result->isVarOwner()){
+        result = result->getParent();
+    }
+    return result;
+}
+
+void Scope::replaceBlock(llvm::BasicBlock *block){
+    _block = block;
+}
+
+std::string Scope::toString(){
+    std::stringstream out;
+    out << (_block == NULL ? "NULL" : _block->getName().str()) << " (id: " << _id << ", type: " << std::hex << _type << ")";
+    return out.str();
+}
+
+void Scope::setReturnReach(){
+    _returnReach = true;
+}
+
+bool Scope::isReturnReach() {
+    return _returnReach;
 }
 
 } // namespace core

@@ -23,6 +23,7 @@ public:
     static const unsigned int Global = 0x0001;
     static const unsigned int Main = 0x0010;
     static const unsigned int Function = 0x0100;
+    static const unsigned int Protected = 0x1000;
 };
 
 class Scope
@@ -34,6 +35,7 @@ public:
 
     bool isGlobal() const;
     bool isFunction() const;
+    bool isVarOwner() const;
     Scope* getParent() const;
 
     operator llvm::BasicBlock*() const;
@@ -47,6 +49,13 @@ public:
     Variable* getVar(const std::string &name) const;
     Type* getType(const std::string &name) const;
     unsigned int ifCount;
+    unsigned int loopCount;
+    core::Scope* getCurrentVarOwnerScope();
+    core::Scope* getCurrentFunctionScope();
+    std::string toString();
+    void replaceBlock(llvm::BasicBlock *block);
+    void setReturnReach();
+    bool isReturnReach();
 
 protected:
     std::multimap<std::string, Function*> _functions;
@@ -56,6 +65,8 @@ protected:
     Scope *_parent;
     llvm::BasicBlock *_block;
     unsigned int _type;
+    unsigned int _id;
+    bool _returnReach;
 };
 
 } // namespace core

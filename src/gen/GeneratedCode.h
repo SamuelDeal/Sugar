@@ -5,7 +5,6 @@ namespace llvm {
     class Function;
     class Module;
     class BasicBlock;
-    class ExecutionEngine;
 }
 
 namespace sugar {
@@ -27,17 +26,11 @@ public:
     llvm::Module* getModule() const;
     ast::Block* getBlock() const;
     Generation* getGeneration() const;
-    int getStatementCount() const;
-    void setStatementCount(int count);
-    llvm::ExecutionEngine* getExecutionEngine() const;
-    void setExecutionEngine(llvm::ExecutionEngine *ee);
 
 protected:
     llvm::Function *_function;
     Generation *_generation;
     ast::Block *_block;
-    int _statementCount;
-    llvm::ExecutionEngine *_ee;
 };
 
 } // namespace gen

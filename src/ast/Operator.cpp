@@ -3,10 +3,11 @@
 namespace sugar {
 namespace ast {
 
-Operator::Operator(int operatorId, std::list<Expression*> *expressions) :
+Operator::Operator(int operatorId, std::list<Expression*> *expressions, bool before) :
     Expression(Node::eOperator) {
     this->operatorId = operatorId;
     this->args = expressions;
+    this->before = before;
 }
 
 Operator::~Operator(){

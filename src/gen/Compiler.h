@@ -12,7 +12,7 @@ public:
     Compiler();
     virtual ~Compiler();
 
-    bool compile(GeneratedCode *genCode, const std::string &outputFile) const;
+    bool compile(ast::Block &programStmts, const std::string &outputFile) const;
 
 protected:
     bool generateObjectFile(GeneratedCode *genCode, const std::string &output) const;

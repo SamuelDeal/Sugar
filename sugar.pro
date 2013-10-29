@@ -70,7 +70,14 @@ SOURCES += \
     src/ast/TypeIdentifier.cpp \
     src/sugari.cpp \
     src/utils.cpp \
-    src/sugarc.cpp
+    src/sugarc.cpp \
+    src/ast/WhileStmt.cpp \
+    src/gen/pass/AbstractPass.cpp \
+    src/gen/Parser.cpp \
+    src/gen/InteractiveParser.cpp \
+    src/parser/BatchParser.cpp \
+    src/parser/InteractiveParser.cpp \
+    src/parser/LexerContext.cpp
 
 HEADERS += \
     codegen.h \
@@ -141,7 +148,14 @@ HEADERS += \
     src/ast/TypeIdentifier.h \
     src/config.h \
     src/utils.h \
-    src/lexer_ctx.h
+    src/lexer_ctx.h \
+    src/ast/WhileStmt.h \
+    src/gen/pass/AbstractPass.h \
+    src/gen/Parser.h \
+    src/gen/InteractiveParser.h \
+    src/parser/BatchParser.h \
+    src/parser/InteractiveParser.h \
+    src/parser/LexerContext.h
 
 OTHER_FILES += \
     parser.y \
@@ -189,4 +203,6 @@ OTHER_FILES += \
     test/test002.test \
     test/test002.expected \
     test/test001.test \
-    test/test001.expected
+    test/test001.expected \
+    src/parser/parser.y \
+    src/parser/lexer.l

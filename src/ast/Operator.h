@@ -9,11 +9,12 @@ namespace ast {
 class Operator : public Expression
 {
 public:
-    Operator(int operatorId, std::list<Expression*> *expressions);
+    Operator(int operatorId, std::list<Expression*> *expressions, bool before = false);
     virtual ~Operator();
 
     std::list<Expression*> *args;
     int operatorId;
+    bool before;
 
     virtual bool isImplicitFunctionCall() const;
 };

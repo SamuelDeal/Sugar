@@ -14,7 +14,7 @@
 #include "../core/Variable.h"
 #include "../core/Operator.h"
 #include "../core/Cast.h"
-#include "../parser.hpp"
+#include "../parser/parser.hpp"
 
 #include "GeneratedCode.h"
 #include "Generation.h"
@@ -32,7 +32,7 @@ Generator::Generator(){
 Generator::~Generator(){
 }
 
-GeneratedCode* Generator::generate(ast::Block *block){
+GeneratedCode* Generator::generate(ast::Block *block) const{
 #if DEBUG_GENERATOR
     std::cerr << "\n========= Generating code... =========\n";
 #endif
@@ -60,105 +60,101 @@ GeneratedCode* Generator::generate(ast::Block *block){
     return result;
 }
 
-llvm::Value* Generator::generateAddIntInt(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateAddIntInt(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateAdd(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateAddFloatFloat(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateAddFloatFloat(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateFAdd(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateSubIntInt(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateSubIntInt(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateSub(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateSubFloatFloat(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateSubFloatFloat(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateFSub(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateMulIntInt(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateMulIntInt(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateMul(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateMulFloatFloat(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateMulFloatFloat(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateFMul(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateDivFloatFloat(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateDivFloatFloat(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateFDiv(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateEqBoolBool(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateEqBoolBool(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateICmpEQ(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateEqIntInt(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateEqIntInt(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateICmpEQ(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateEqFloatFloat(std::vector<llvm::Value*> values, Generation &gen){
-    return gen.builder.CreateFCmpUEQ(values[0], values[1]);
-}
-
-llvm::Value* Generator::generateNEqBoolBool(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateNEqBoolBool(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateICmpNE(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateNEqIntInt(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateNEqIntInt(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateICmpNE(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateNEqFloatFloat(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateNEqFloatFloat(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateFCmpUNE(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateLessIntInt(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateLessIntInt(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateICmpSLT(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateLessFloatFloat(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateLessFloatFloat(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateFCmpULT(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateLessEqIntInt(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateLessEqIntInt(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateICmpSLE(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateLessEqFloatFloat(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateLessEqFloatFloat(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateFCmpULE(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateMoreIntInt(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateMoreIntInt(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateICmpSGT(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateMoreFloatFloat(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateMoreFloatFloat(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateFCmpUGT(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateMoreEqIntInt(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateMoreEqIntInt(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateICmpSGE(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateMoreEqFloatFloat(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateMoreEqFloatFloat(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateFCmpUGE(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateAndBoolBool(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateAndBoolBool(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateAnd(values[0], values[1]);
 
 }
 
-llvm::Value* Generator::generateOrBoolBool(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateOrBoolBool(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateOr(values[0], values[1]);
 }
 
-llvm::Value* Generator::generateIntToFloatCast(std::vector<llvm::Value*> values, Generation &gen){
+llvm::Value* Generator::generateIntToFloatCast(std::vector<llvm::Value*> values, Generation &gen) const{
     return gen.builder.CreateFPToSI(values[0], gen.floatType);
 }
 
 
-void Generator::initCore(Generation &gen){
+void Generator::initCore(Generation &gen) const{
     gen.castGraph.addImplicitCast(new Cast(&AbstractGenerator::generateIntToFloatCast, &gen.floatType, &gen.intType));
 
     std::list<const Type*> types;
@@ -213,12 +209,6 @@ void Generator::initCore(Generation &gen){
     types.push_back(&gen.intType);
     types.push_back(&gen.intType);
     op = new Operator(TCEQ, &AbstractGenerator::generateEqIntInt, &gen.boolType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.floatType);
-    types.push_back(&gen.floatType);
-    op = new Operator(TCEQ, &AbstractGenerator::generateEqFloatFloat, &gen.boolType, types);
     gen.rootScope.addOperator(op);
 
     types.clear();
@@ -306,7 +296,7 @@ void Generator::initCore(Generation &gen){
     gen.rootScope.addFunction(generateEchoDoubleFunction(printf, gen));
 }
 
-llvm::Function* Generator::generatePrintfFunction(Generation &gen) {
+llvm::Function* Generator::generatePrintfFunction(Generation &gen) const {
     std::vector<llvm::Type*> printf_arg_types;
     printf_arg_types.push_back(llvm::Type::getInt8PtrTy(gen.context)); //char*
 
@@ -321,7 +311,7 @@ llvm::Function* Generator::generatePrintfFunction(Generation &gen) {
     return func;
 }
 
-Function* Generator::generateEchoBoolFunction(llvm::Function* printfFn, Generation &gen) {
+Function* Generator::generateEchoBoolFunction(llvm::Function* printfFn, Generation &gen) const {
     std::vector<llvm::Type*> echo_arg_types;
     echo_arg_types.push_back(gen.boolType);
 
@@ -370,7 +360,7 @@ Function* Generator::generateEchoBoolFunction(llvm::Function* printfFn, Generati
     return new Function("echo", func, &gen.voidType, types);
 }
 
-Function* Generator::generateEchoIntFunction(llvm::Function* printfFn, Generation &gen) {
+Function* Generator::generateEchoIntFunction(llvm::Function* printfFn, Generation &gen) const {
     std::vector<llvm::Type*> echo_arg_types;
     echo_arg_types.push_back(gen.intType);
 
@@ -410,7 +400,7 @@ Function* Generator::generateEchoIntFunction(llvm::Function* printfFn, Generatio
     return new Function("echo", func, &gen.voidType, types);
 }
 
-Function* Generator::generateEchoDoubleFunction(llvm::Function* printfFn, Generation &gen) {
+Function* Generator::generateEchoDoubleFunction(llvm::Function* printfFn, Generation &gen) const {
     std::vector<llvm::Type*> echo_arg_types;
     echo_arg_types.push_back(gen.floatType);
 
@@ -453,12 +443,12 @@ Function* Generator::generateEchoDoubleFunction(llvm::Function* printfFn, Genera
 }
 
 
-llvm::Value* Generator::parse(ast::TypeIdentifier *node, Generation &gen){
+llvm::Value* Generator::parse(ast::TypeIdentifier *node, Generation &gen) const {
     //Nothing to do
     return NULL;
 }
 
-llvm::Value* Generator::parseNode(ast::Node *node, Generation &gen){
+llvm::Value* Generator::parseNode(ast::Node *node, Generation &gen) const {
     switch(node->getKind()){
         case ast::Node::eAssignment:            return parse((ast::Assignment *)node, gen);
         case ast::Node::eBlock:                 return parse((ast::Block *)node, gen);
@@ -473,10 +463,11 @@ llvm::Value* Generator::parseNode(ast::Node *node, Generation &gen){
         case ast::Node::eVariableDeclaration:   return parse((ast::VariableDeclaration *)node, gen);
         case ast::Node::eTypeIdentifier:        return parse((ast::TypeIdentifier *)node, gen);
         case ast::Node::eOperator:              return parse((ast::Operator *)node, gen);
+        case ast::Node::eWhileStmt:             return parse((ast::WhileStmt *)node, gen);
     }
 }
 
-llvm::Value* Generator::parse(ast::Assignment *node, Generation &gen){
+llvm::Value* Generator::parse(ast::Assignment *node, Generation &gen) const {
 #if DEBUG_GENERATOR
     std::cerr << "Creating assignment for " << *node->left->name << std::endl;
 #endif
@@ -498,11 +489,11 @@ llvm::Value* Generator::parse(ast::Assignment *node, Generation &gen){
     return assign;
 }
 
-llvm::Value* Generator::parse(ast::Block *node, Generation &gen){
+llvm::Value* Generator::parse(ast::Block *node, Generation &gen) const {
     std::list<ast::Statement*>::const_iterator it;
     llvm::Value *lastValue = NULL;
     ast::Statement *lastStatement = NULL;
-    for (it = node->stmts.begin(); it != node->stmts.end(); it++) {
+    for (it = node->stmts.begin(); it != node->stmts.end() && !gen.scope->isReturnReach(); it++) {
 #if DEBUG_GENERATOR
         std::cerr << "Generating code for statement" << std::endl;
 #endif
@@ -521,7 +512,7 @@ llvm::Value* Generator::parse(ast::Block *node, Generation &gen){
     return lastValue;
 }
 
-llvm::Value* Generator::parse(ast::Constant *node, Generation &gen){
+llvm::Value* Generator::parse(ast::Constant *node, Generation &gen) const {
     switch(node->getConstantType()){
         case ast::Constant::eBoolean:
             node->setType(gen.boolType);
@@ -538,7 +529,7 @@ llvm::Value* Generator::parse(ast::Constant *node, Generation &gen){
     }
 }
 
-llvm::Value* Generator::parse(ast::ExpressionStmt *node, Generation &gen){
+llvm::Value* Generator::parse(ast::ExpressionStmt *node, Generation &gen) const {
 #if DEBUG_GENERATOR
     std::cerr << "Generating code for expression" << std::endl;
 #endif
@@ -547,7 +538,7 @@ llvm::Value* Generator::parse(ast::ExpressionStmt *node, Generation &gen){
     return result;
 }
 
-llvm::Value* Generator::parse(ast::FunctionCall *node, Generation &gen){
+llvm::Value* Generator::parse(ast::FunctionCall *node, Generation &gen) const {
 #if DEBUG_GENERATOR
     std::cerr << "\n*** Method call generation " << *node->functionName->name << std::endl;
 #endif
@@ -596,7 +587,7 @@ llvm::Value* Generator::parse(ast::FunctionCall *node, Generation &gen){
     }
 }
 
-llvm::Value* Generator::parse(ast::Operator *node, Generation &gen){
+llvm::Value* Generator::parse(ast::Operator *node, Generation &gen) const {
 #if DEBUG_GENERATOR
     std::string debugTypes;
 #endif
@@ -643,7 +634,8 @@ llvm::Value* Generator::parse(ast::Operator *node, Generation &gen){
     }
 }
 
-llvm::Value* Generator::parse(ast::Identifier *node, Generation &gen){
+
+llvm::Value* Generator::parse(ast::Identifier *node, Generation &gen) const {
 #if DEBUG_GENERATOR
     std::cerr << "\n*** Identifier " << *node->name << std::endl;
 #endif
@@ -683,7 +675,7 @@ llvm::Value* Generator::parse(ast::Identifier *node, Generation &gen){
     }
 }
 
-llvm::Value* Generator::parse(ast::FunctionDeclaration *node, Generation &gen){
+llvm::Value* Generator::parse(ast::FunctionDeclaration *node, Generation &gen) const {
     Type *returnType = gen.scope->getType(*node->type->name);
     if(NULL == returnType){
         std::cout << "Unknown type " << *node->type->name << std::endl;
@@ -739,21 +731,22 @@ llvm::Value* Generator::parse(ast::FunctionDeclaration *node, Generation &gen){
     return function;
 }
 
-llvm::Value* Generator::parse(ast::VariableDeclaration *node, Generation &gen){
+llvm::Value* Generator::parse(ast::VariableDeclaration *node, Generation &gen) const {
     Type *type = gen.scope->getType(*node->type->name);
     if(type == NULL){
         std::cout << "Unknown type " << *node->type->name << std::endl;
         return NULL;
     }
     node->setType(*type);
-    if(gen.scope->isGlobal()){
+    Scope *scope = gen.scope->getCurrentVarOwnerScope();
+    if(scope->isGlobal()){
 #if DEBUG_GENERATOR
         std::cerr << "Creating global variable declaration " << *node->type->name << " " << *node->id->name << std::endl;
 #endif
         llvm::GlobalVariable *var = new llvm::GlobalVariable(*gen.module, *type, false,
             llvm::GlobalValue::InternalLinkage, 0, *node->id->name);
         var->setInitializer(llvm::Constant::getNullValue(*type));
-        gen.scope->addVar(new Variable(*node->id->name, *type, var));
+        scope->addVar(new Variable(*node->id->name, *type, var));
         if(node->assign != NULL){
 #if DEBUG_GENERATOR
             std::cerr << "Assigning value to global variable declaration " << type->getName() << " " << node->id->name << std::endl;
@@ -767,8 +760,8 @@ llvm::Value* Generator::parse(ast::VariableDeclaration *node, Generation &gen){
 #if DEBUG_GENERATOR
         std::cerr << "Creating local variable declaration " << *node->type->name << " " << *node->id->name << std::endl;
 #endif
-        llvm::AllocaInst *alloc = new llvm::AllocaInst(*type, node->id->name->c_str(), *gen.scope);
-        gen.scope->addVar(new Variable(*node->id->name, *type, alloc));
+        llvm::AllocaInst *alloc = new llvm::AllocaInst(*type, node->id->name->c_str(), *scope);
+        scope->addVar(new Variable(*node->id->name, *type, alloc));
         if(node->assign != NULL){
 #if DEBUG_GENERATOR
             std::cerr << "Assigning value to local variable declaration " << type->getName() << " " << *node->id->name << std::endl;
@@ -779,52 +772,67 @@ llvm::Value* Generator::parse(ast::VariableDeclaration *node, Generation &gen){
     }
 }
 
-llvm::Value* Generator::parse(ast::IfExpression *node, Generation &gen){
+llvm::Value* Generator::parse(ast::IfExpression *node, Generation &gen) const {
     llvm::Value *condV = parseNode(node->cond, gen);
 
     llvm::Function *currentFunction = gen.builder.GetInsertBlock()->getParent();
-    core::Scope *currentFunctionScope = gen.getCurrentFunctionScope();
+    core::Scope *currentFunctionScope = gen.scope->getCurrentFunctionScope();
     unsigned int ifCount = ++currentFunctionScope->ifCount;
+    bool phi = true;
     std::string ifIndex = "";
     if(ifCount > 1){
         ifIndex = std::to_string(ifCount);
     }
     llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(gen.context, "if"+ifIndex, currentFunction);
-    llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(gen.context, "else"+ifIndex);
+    llvm::BasicBlock *elseBB = NULL;
     llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(gen.context, "endif"+ifIndex);
-
-    gen.builder.CreateCondBr(condV, thenBB, elseBB);
+    if(node->elseBlk != NULL){
+        elseBB = llvm::BasicBlock::Create(gen.context, "else"+ifIndex);
+        gen.builder.CreateCondBr(condV, thenBB, elseBB);
+    }
+    else{
+        gen.builder.CreateCondBr(condV, thenBB, mergeBB);
+        phi = false;
+    }
 
     gen.pushBlock(thenBB);
-    gen.builder.SetInsertPoint(thenBB);
     llvm::Value *thenValue = parse(node->thenBlk, gen);
-
-    gen.builder.CreateBr(mergeBB);
-    gen.popBlock();
+    if(gen.scope->isReturnReach()){
+        phi = false;
+    }
+    else{
+        gen.builder.CreateBr(mergeBB);
+    }
     thenBB = gen.builder.GetInsertBlock();
+    gen.popBlock();
 
-
-    currentFunction->getBasicBlockList().push_back(elseBB);
-    gen.pushBlock(elseBB);
-    gen.builder.SetInsertPoint(elseBB);
     llvm::Value *elseValue = NULL;
     if(node->elseBlk != NULL){
+        currentFunction->getBasicBlockList().push_back(elseBB);
+        gen.pushBlock(elseBB);
         elseValue = parse(node->elseBlk, gen);
-    }
-    gen.builder.CreateBr(mergeBB);
-    gen.popBlock();
-    elseBB = gen.builder.GetInsertBlock();
-
+        gen.builder.CreateBr(mergeBB);
+        elseBB = gen.builder.GetInsertBlock();
+        gen.popBlock();
+    }    
 
     currentFunction->getBasicBlockList().push_back(mergeBB);
     gen.pushBlock(mergeBB);
-    gen.builder.SetInsertPoint(mergeBB);
-    if(node->elseBlk == NULL || node->elseBlk->getType() != node->thenBlk->getType() ||
+    gen.scope->getParent()->replaceBlock(mergeBB);
+    if(!phi || node->elseBlk->getType() != node->thenBlk->getType() ||
             *node->elseBlk->getType() == gen.voidType){
+        phi = false;
+    }
+
+    if(!phi){
 #if DEBUG_GENERATOR
         std::cerr << "skip phi value" << std::endl;
 #endif
         node->setType(gen.voidType);
+        gen.popBlock();
+#if DEBUG_GENERATOR
+        std::cerr << gen.scopeHierarchy() << std::endl;
+#endif
         return NULL;
     }
     else{
@@ -835,12 +843,15 @@ llvm::Value* Generator::parse(ast::IfExpression *node, Generation &gen){
         llvm::PHINode *phiValue = gen.builder.CreatePHI(*node->getType(), 2);
         phiValue->addIncoming(thenValue, thenBB);
         phiValue->addIncoming(elseValue, elseBB);
+        gen.popBlock();
+#if DEBUG_GENERATOR
+        std::cerr << gen.scopeHierarchy() << std::endl;
+#endif
         return phiValue;
     }
-
 }
 
-llvm::Value* Generator::parse(ast::Comparison *node, Generation &gen){
+llvm::Value* Generator::parse(ast::Comparison *node, Generation &gen) const {
     node->setType(gen.boolType);
 
     std::list<ast::Expression *>::iterator it = node->expressions.begin();
@@ -877,10 +888,51 @@ llvm::Value* Generator::parse(ast::Comparison *node, Generation &gen){
     return result;
 }
 
-llvm::Value* Generator::parse(ast::ReturnStmt *node, Generation &gen){
-    return NULL;
+llvm::Value* Generator::parse(ast::ReturnStmt *node, Generation &gen) const {
+    llvm::Value* expr = parseNode(node->expression, gen);
+    llvm::Value* returnExpr = gen.builder.CreateRet(expr);
+    gen.scope->setReturnReach();
+    return returnExpr;
 }
 
+llvm::Value* Generator::parse(ast::WhileStmt *node, Generation &gen) const {
+    node->setType(gen.voidType);
+
+    llvm::Function *currentFunction = gen.builder.GetInsertBlock()->getParent();
+    core::Scope *currentFunctionScope = gen.scope->getCurrentFunctionScope();
+    unsigned int loopCount = ++currentFunctionScope->loopCount;
+    std::string loopIndex = "";
+    if(loopCount > 1){
+        loopIndex = std::to_string(loopCount);
+    }
+
+    llvm::BasicBlock *condBB = llvm::BasicBlock::Create(gen.context, "loopcond"+loopIndex);
+    llvm::BasicBlock *loopBB = llvm::BasicBlock::Create(gen.context, "loop"+loopIndex);
+    llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(gen.context, "endloop"+loopIndex);
+
+    gen.builder.CreateBr(node->testFirst ? condBB : loopBB);
+    currentFunction->getBasicBlockList().push_back(condBB);
+    gen.pushBlock(condBB);
+    llvm::Value *condV = parseNode(node->cond, gen);
+    gen.builder.CreateCondBr(condV, loopBB, mergeBB);
+    gen.popBlock();
+
+    currentFunction->getBasicBlockList().push_back(loopBB);
+    gen.pushBlock(loopBB);
+    parse(node->block, gen);
+    if(!gen.scope->isReturnReach()){
+        gen.builder.CreateBr(condBB);
+    }
+    loopBB = gen.builder.GetInsertBlock();
+    gen.popBlock();
+
+    currentFunction->getBasicBlockList().push_back(mergeBB);
+    gen.pushBlock(mergeBB);
+    gen.scope->getParent()->replaceBlock(mergeBB);
+    gen.popBlock();
+
+    return NULL;
+}
 
 } // namespace gen
 } // namespace sugar

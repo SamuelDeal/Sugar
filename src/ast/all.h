@@ -17,5 +17,6 @@
 #include "Statement.h"
 #include "TypeIdentifier.h"
 #include "VariableDeclaration.h"
+#include "WhileStmt.h"
 
 #endif // ALL_H

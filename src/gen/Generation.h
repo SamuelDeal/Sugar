@@ -27,7 +27,7 @@ public:
     void pushBlock(llvm::BasicBlock *block, unsigned int scopeType = core::ScopeType::Logical);
     void popBlock();
     llvm::Module* getModule() const;
-    core::Scope* getCurrentFunctionScope();
+    std::string scopeHierarchy();
 
 protected:
     llvm::Module *module;

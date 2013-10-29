@@ -1,0 +1,5 @@
+Int a = 5
+while a < 10
+	echo a
+	a = a + 1
+echo 20

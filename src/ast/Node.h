@@ -26,7 +26,8 @@ public:
         eFunctionDeclaration,
         eComparison,
         eExpressionStmt,
-        eOperator
+        eOperator,
+        eWhileStmt
     };
 
 protected:

@@ -14,8 +14,6 @@ GeneratedCode::GeneratedCode(llvm::Function *function, Generation *gen, ast::Blo
     _function = function;
     _generation = gen;
     _block = block;
-    _statementCount = 0;
-    _ee = NULL;
 }
 
 GeneratedCode::~GeneratedCode(){
@@ -29,10 +27,7 @@ GeneratedCode::~GeneratedCode(){
     if(_mainBlock != NULL){
         delete _block;
     }
-    if(_ee != NULL){
-        delete _ee;
-    }
-    */
+*/
 }
 
 llvm::Function* GeneratedCode::getFunction() const {
@@ -49,22 +44,6 @@ Generation* GeneratedCode::getGeneration() const {
 
 ast::Block* GeneratedCode::getBlock() const {
     return _block;
-}
-
-int GeneratedCode::getStatementCount() const {
-    return _statementCount;
-}
-
-void GeneratedCode::setStatementCount(int value) {
-    _statementCount = value;
-}
-
-llvm::ExecutionEngine* GeneratedCode::getExecutionEngine() const {
-    return _ee;
-}
-
-void GeneratedCode::setExecutionEngine(llvm::ExecutionEngine *ee) {
-    _ee = ee;
 }
 
 } // namespace gen
