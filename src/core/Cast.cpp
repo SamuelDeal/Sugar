@@ -13,7 +13,7 @@ Cast::Cast(llvm::Function *fn, Type* fromType, Type* toType):
     AbstractFunction(fn, toType, createList(fromType))
 {}
 
-Cast::Cast(gen::NativeFunction fn, Type* fromType, Type* toType):
+Cast::Cast(NativeFunction fn, Type* fromType, Type* toType):
     AbstractFunction(fn, toType, createList(fromType))
 {}
 

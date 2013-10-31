@@ -1,9 +1,15 @@
 #include "Identifier.h"
 
+#include "Node.h"
+
 namespace sugar {
 namespace ast {
 
-Identifier::Identifier(std::string *name) : Expression(Node::eIdentifier) {
+Node* Identifier::create(std::string *name) {
+    return new Node(Node::eIdentifier, new Identifier(name));
+}
+
+Identifier::Identifier(std::string *name) {
     this->name = name;
 }
 

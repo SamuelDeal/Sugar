@@ -38,15 +38,12 @@ SOURCES += \
     gen/AbstractGenerator.cpp \
     core/Variable.cpp \
     src/ast/VariableDeclaration.cpp \
-    src/ast/Statement.cpp \
     src/ast/ReturnStmt.cpp \
     src/ast/Node.cpp \
     src/ast/IfExpression.cpp \
     src/ast/Identifier.cpp \
     src/ast/FunctionDeclaration.cpp \
     src/ast/FunctionCall.cpp \
-    src/ast/ExpressionStmt.cpp \
-    src/ast/Expression.cpp \
     src/ast/Constant.cpp \
     src/ast/Comparison.cpp \
     src/ast/Block.cpp \
@@ -56,7 +53,6 @@ SOURCES += \
     src/core/Scope.cpp \
     src/core/Function.cpp \
     src/core/CastGraph.cpp \
-    src/gen/AbstractGenerator.cpp \
     src/gen/Interpreter.cpp \
     src/gen/Generator.cpp \
     src/gen/Generation.cpp \
@@ -72,12 +68,21 @@ SOURCES += \
     src/utils.cpp \
     src/sugarc.cpp \
     src/ast/WhileStmt.cpp \
-    src/gen/pass/AbstractPass.cpp \
     src/gen/Parser.cpp \
     src/gen/InteractiveParser.cpp \
     src/parser/BatchParser.cpp \
     src/parser/InteractiveParser.cpp \
-    src/parser/LexerContext.cpp
+    src/parser/LexerContext.cpp \
+    src/gen/pass/AstPass.cpp \
+    src/gen/pass/AbstractPass.cpp \
+    src/ast/NodeData.cpp \
+    src/types/Int.cpp \
+    src/types/BuiltinType.cpp \
+    src/types/Float.cpp \
+    src/types/Bool.cpp \
+    src/gen/pass/IrPass.cpp \
+    src/ast/ArgumentDeclaration.cpp \
+    src/gen/pass/FunctionLookupPass.cpp
 
 HEADERS += \
     codegen.h \
@@ -116,15 +121,12 @@ HEADERS += \
     gen/AbstractGenerator.h \
     core/Variable.h \
     src/ast/VariableDeclaration.h \
-    src/ast/Statement.h \
     src/ast/ReturnStmt.h \
     src/ast/Node.h \
     src/ast/IfExpression.h \
     src/ast/Identifier.h \
     src/ast/FunctionDeclaration.h \
     src/ast/FunctionCall.h \
-    src/ast/ExpressionStmt.h \
-    src/ast/Expression.h \
     src/ast/Constant.h \
     src/ast/Comparison.h \
     src/ast/Block.h \
@@ -139,7 +141,6 @@ HEADERS += \
     src/gen/Generation.h \
     src/gen/GeneratedCode.h \
     src/gen/Compiler.h \
-    src/gen/AbstractGenerator.h \
     src/gen/Interpreter.h \
     src/core/AbstractFunction.h \
     src/core/Operator.h \
@@ -150,13 +151,23 @@ HEADERS += \
     src/utils.h \
     src/lexer_ctx.h \
     src/ast/WhileStmt.h \
-    src/gen/pass/AbstractPass.h \
     src/gen/Parser.h \
     src/gen/InteractiveParser.h \
     src/parser/BatchParser.h \
     src/parser/InteractiveParser.h \
     src/parser/LexerContext.h \
-    src/config_checked.h
+    src/config_checked.h \
+    src/gen/pass/AstPass.h \
+    src/gen/pass/AbstractPass.h \
+    src/ast/NodeData.h \
+    src/types/all.h \
+    src/types/Int.h \
+    src/types/BuiltinType.h \
+    src/types/Float.h \
+    src/types/Bool.h \
+    src/gen/pass/IrPass.h \
+    src/ast/ArgumentDeclaration.h \
+    src/gen/pass/FunctionLookupPass.h
 
 OTHER_FILES += \
     parser.y \

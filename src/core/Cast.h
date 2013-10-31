@@ -10,7 +10,7 @@ class Cast : public AbstractFunction
 {
 public:
     Cast(llvm::Function *fn, Type* fromType, Type* toType);
-    Cast(gen::NativeFunction fn, Type* fromType, Type* toType);
+    Cast(NativeFunction fn, Type* fromType, Type* toType);
 
     virtual ~Cast();
 

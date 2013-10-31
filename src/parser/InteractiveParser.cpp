@@ -162,7 +162,7 @@ InteractiveParser::InteractiveParser()
 {
 }
 
-void InteractiveParser::parse(FILE *file, ast::Block &programStmts, stmtFunction callback) const {
+void InteractiveParser::parse(FILE *file, ast::Node &programStmts, stmtFunction callback) const {
     yydebug = DEBUG_PARSER;
 
     yyscan_t scanner;

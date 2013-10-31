@@ -15,32 +15,32 @@ using namespace sugar;
 void yyerror(YYLTYPE *locp, sugar::parser::LexerContext *lexerCtx, const char *err);
 
 
-ast::Operator* makeOperatorCall(ast::Expression *subject, int operatorId, ast::Expression *arg1){
-    std::list<ast::Expression *> *args = new std::list<ast::Expression *>();
+ast::Node* makeOperatorCall(ast::Node *subject, int operatorId, ast::Node *arg1){
+    std::list<ast::Node *> *args = new std::list<ast::Node *>();
     args->push_back(subject);
     args->push_back(arg1);
-    return new ast::Operator(operatorId, args);
+    return ast::Operator::create(operatorId, args);
 }
 
-ast::Operator* makeUnaryOperatorCall(ast::Expression *subject, int operatorId, bool before){
-    std::list<ast::Expression *> *args = new std::list<ast::Expression *>();
+ast::Node* makeUnaryOperatorCall(ast::Node *subject, int operatorId, bool before){
+    std::list<ast::Node *> *args = new std::list<ast::Node *>();
     args->push_back(subject);
-    return new ast::Operator(operatorId, args, before);
+    return ast::Operator::create(operatorId, args, before);
 }
 
 %}
 
 /* Represents the many different ways we can access our data */
 %union {
-        ast::Block *block;
-        ast::Expression *expr;
-        ast::Statement *stmt;
-        ast::Identifier *ident;
-        ast::TypeIdentifier *type_ident;
-        ast::VariableDeclaration *var_decl;
-        ast::Comparison *comp;
-        std::list<ast::VariableDeclaration*> *args_decl;
-        std::list<ast::Expression*> *expr_list;
+        ast::Node *block;
+        ast::Node *expr;
+        ast::Node *stmt;
+        ast::Node *ident;
+        ast::Node *type_ident;
+        ast::Node *var_decl;
+        ast::Node *comp;
+        std::list<ast::Node*> *args_decl;
+        std::list<ast::Node*> *expr_list;
         std::string *string;
         int token;
 }
@@ -128,19 +128,35 @@ program_stmts   : program_stmt { lexerCtx->onProgramStmt($<stmt>1); }
                 | program_stmts TOK_END_INSTR {}
                 ;
 
-block_stmts     : stmt TOK_END_INSTR { $$ = new ast::Block(); $$->stmts.push_back($<stmt>1); }
-                | block_stmts stmt TOK_END_INSTR { $1->stmts.push_back($<stmt>2); }
+block_stmts     : stmt TOK_END_INSTR {
+                    $$ = ast::Block::create();
+                    ((ast::Block*)($$->data))->stmts.push_back($<stmt>1);
+                }
+                | block_stmts stmt TOK_END_INSTR { ((ast::Block*)($1->data))->stmts.push_back($<stmt>2); }
                 ;
 
 stmt            : action_stmt { $$ = $1; }
-                | var_decl { $$ = $1; }
-                | if { $$ = new ast::ExpressionStmt($1); }
+                | var_decl {
+                    ast::VariableDeclaration *varDecl = ((ast::VariableDeclaration*)($1->data));
+                    if(varDecl->assign == NULL){
+                        $$ = $1;
+                    }
+                    else {
+                        ast::Block *block = new ast::Block();
+                        block->stmts.push_back($1);
+                        std::string *varName = new std::string(*((ast::Identifier*)(varDecl->id->data))->name);
+                        block->stmts.push_back(ast::Assignment::create(ast::Identifier::create(varName), varDecl->assign));
+                        varDecl->assign = NULL;
+                        $$ = new ast::Node(ast::Node::eBlock, block);
+                    }
+                }
+                | if { $$ = $1; }
                 | while { $$ = $1; }
                 ;
 
-action_stmt     : expr { $$ = new ast::ExpressionStmt($1); }
-                | TRETURN expr { $$ = new ast::ReturnStmt($2); }
-                | ident TEQUAL expr { $$ = new ast::Assignment($<ident>1, $3); }
+action_stmt     : expr { $$ = $1; }
+                | TRETURN expr { $$ = ast::ReturnStmt::create($2); }
+                | ident TEQUAL expr { $$ = ast::Assignment::create($<ident>1, $3); }
                 ;
 
 program_stmt    : stmt TOK_END_INSTR { $$ = $1; }
@@ -168,89 +184,120 @@ expr			: expr TMUL expr { $$ = makeOperatorCall($1, TMUL, $3); }
                 | if_else { $$ = $1; }
                 ;
 
-comp_diff       : expr TCNE expr { $$ = new ast::Comparison($1); $$->add(TCNE, $3); }
+comp_diff       : expr TCNE expr { $$ = ast::Comparison::create($1); ((ast::Comparison*)($$->data))->add(TCNE, $3); }
                 ;
 
-comp_eq         : expr TCEQ expr { $$ = new ast::Comparison($1); $$->add(TCEQ, $3); }
-                | comp_eq TCEQ expr  { $1->add(TCEQ, $3); $$ = $1; }
+comp_eq         : expr TCEQ expr { $$ = ast::Comparison::create($1); ((ast::Comparison*)($$->data))->add(TCEQ, $3); }
+                | comp_eq TCEQ expr  { ((ast::Comparison*)($1->data))->add(TCEQ, $3); $$ = $1; }
                 ;
 
-comp_less       : expr TCLT expr  { $$ = new ast::Comparison($1); $$->add(TCLT, $3); }
-                | expr TCLE expr { $$ = new ast::Comparison($1); $$->add(TCLE, $3); }
-                | comp_less TCLT expr { $1->add(TCLT, $3); $$ = $1; }
-                | comp_less TCLE expr { $1->add(TCLE, $3); $$ = $1; }
+comp_less       : expr TCLT expr  { $$ = ast::Comparison::create($1); ((ast::Comparison*)($$->data))->add(TCLT, $3); }
+                | expr TCLE expr { $$ = ast::Comparison::create($1); ((ast::Comparison*)($$->data))->add(TCLE, $3); }
+                | comp_less TCLT expr { ((ast::Comparison*)($1->data))->add(TCLT, $3); $$ = $1; }
+                | comp_less TCLE expr { ((ast::Comparison*)($1->data))->add(TCLE, $3); $$ = $1; }
                 ;
 
-comp_more       : expr TCGT expr { $$ = new ast::Comparison($1); $$->add(TCGT, $3); }
-                | expr TCGE expr { $$ = new ast::Comparison($1); $$->add(TCGE, $3); }
-                | comp_more TCGT expr  { $1->add(TCGT, $3); $$ = $1; }
-                | comp_more TCGE expr{ $1->add(TCGE, $3); $$ = $1; }
+comp_more       : expr TCGT expr {
+                    $$ = ast::Comparison::create($1);
+                    ((ast::Comparison*)($$->data))->add(TCGT, $3);
+                }
+                | expr TCGE expr {
+                    $$ = ast::Comparison::create($1);
+                    ((ast::Comparison*)($$->data))->add(TCGE, $3);
+                }
+                | comp_more TCGT expr  {
+                    ((ast::Comparison*)($1->data))->add(TCGT, $3);
+                    $$ = $1;
+                }
+                | comp_more TCGE expr {
+                    ((ast::Comparison*)($1->data))->add(TCGE, $3);
+                    $$ = $1;
+                }
                 ;
 
 func_call       : ident func_call_args %prec CALL_IMPL {
-                    std::list<ast::Expression*>::const_iterator it;
+                    std::list<ast::Node*>::const_iterator it;
                     for (it = $2->begin(); it != $2->end(); it++) {
                         if((*it)->isImplicitFunctionCall()){
                             yyerror(&yyloc, lexerCtx, "implicit call forbidden here");
                         }
                     }
-                    $$ = new ast::FunctionCall($1, false, $2); }
-                | ident TOK_NO_SPACE TLPAREN func_call_args TRPAREN %prec CALL_EXPL { $$ = new ast::FunctionCall($1, true, $4); }
-                | ident TOK_NO_SPACE TLPAREN TRPAREN { $$ = new ast::FunctionCall($1, true, new std::list<ast::Expression*>()); }
+                    $$ = ast::FunctionCall::create($1, false, $2); }
+                | ident TOK_NO_SPACE TLPAREN func_call_args TRPAREN %prec CALL_EXPL { $$ = ast::FunctionCall::create($1, true, $4); }
+                | ident TOK_NO_SPACE TLPAREN TRPAREN { $$ = ast::FunctionCall::create($1, true, new std::list<ast::Node*>()); }
                 ;
 
-func_call_args  : expr %prec FUNC_CALL_ARG { $$ = new std::list<ast::Expression*>(); $$->push_back($1); }
-                | func_call_args TCOMMA expr { $1->push_back($3); $$ = $1; }
+func_call_args  : expr %prec FUNC_CALL_ARG {
+                    $$ = new std::list<ast::Node*>();
+                    $$->push_back($1);
+                }
+                | func_call_args TCOMMA expr {
+                    $1->push_back($3);
+                    $$ = $1;
+                }
                 ;
 
-typename        : TTYPENAME { $$ = new ast::TypeIdentifier($1); }
+typename        : TTYPENAME { $$ = ast::TypeIdentifier::create($1); }
                 ;
 
-ident           : TIDENTIFIER { $$ = new ast::Identifier($1); }
+ident           : TIDENTIFIER { $$ = ast::Identifier::create($1); }
                 ;
 
-var_decl        : typename ident { $$ = new ast::VariableDeclaration($1, $2); }
-                | typename ident TEQUAL expr { $$ = new ast::VariableDeclaration($1, $2, $4); }
+var_decl        : typename ident { $$ = ast::VariableDeclaration::create($1, $2); }
+                | typename ident TEQUAL expr { $$ = ast::VariableDeclaration::create($1, $2, $4); }
                 ;
 
 block           : pre_block { $$ = $1; }
                 | TCOLON pre_block { $$ = $2; }
-                | TCOLON expr %prec COLON_EXPR { $$ = new ast::Block(); $$->stmts.push_back(new ast::ExpressionStmt($2)); }
+                | TCOLON expr %prec COLON_EXPR {
+                    $$ = ast::Block::create();
+                    ((ast::Block*)($$->data))->stmts.push_back($2);
+                }
                 ;
 
 pre_block       : TLBRACE block_stmts TRBRACE { $$ = $2; }
-                | TLBRACE TRBRACE { $$ = new ast::Block(); }
+                | TLBRACE TRBRACE { $$ = ast::Block::create(); }
                 | TOK_INDENT block_stmts TOK_OUTDENT { $$ = $2; }
                 ;
 
-func_decl       : typename ident TOK_NO_SPACE TLPAREN func_decl_args TRPAREN block { $$ = new ast::FunctionDeclaration($1, $2, $5, $7); }
+func_decl       : typename ident TOK_NO_SPACE TLPAREN func_decl_args TRPAREN block { $$ = ast::FunctionDeclaration::create($1, $2, $5, $7); }
                 ;
 
-func_decl_args  : /*blank*/  { $$ = new std::list<ast::VariableDeclaration*>(); }
-                | var_decl { $$ = new std::list<ast::VariableDeclaration*>(); $$->push_back($<var_decl>1); }
-                | func_decl_args TCOMMA var_decl { $1->push_back($<var_decl>3); }
+func_decl_args  : /*blank*/  { $$ = new std::list<ast::Node*>(); }
+                | var_decl {
+                    $$ = new std::list<ast::Node*>();
+                    $$->push_back(ast::ArgumentDeclaration::create((ast::VariableDeclaration*)($<var_decl>1->data)));
+                }
+                | func_decl_args TCOMMA var_decl {
+                    $1->push_back(ast::ArgumentDeclaration::create((ast::VariableDeclaration*)($<var_decl>3->data)));
+                    $$ = $1;
+                }
                 ;
 
 if_expr         : TIF expr { $$ = $2; }
                 ;
 
-if              : if_expr block %prec IF_ALONE { $$ = new ast::IfExpression($1, $2); }
-                | action_stmt if_expr { ast::Block* tmp = new ast::Block(); tmp->stmts.push_back($<stmt>1); $$ = new ast::IfExpression($2, tmp); }
+if              : if_expr block %prec IF_ALONE { $$ = ast::IfExpression::create($1, $2); }
+                | action_stmt if_expr {
+                    ast::Node* tmp = ast::Block::create();
+                    ((ast::Block*)(tmp->data))->stmts.push_back($<stmt>1);
+                    $$ = ast::IfExpression::create($2, tmp);
+                }
                 ;
 
-if_else         : if_expr block else block { $$ = new ast::IfExpression($1, $2, $4); }
+if_else         : if_expr block else block { $$ = ast::IfExpression::create($1, $2, $4); }
                 ;
 
 else            : TELSE { }
                 ;
 
-while           : TWHILE expr block { $$ = new ast::WhileStmt($2, $3); }
+while           : TWHILE expr block { $$ = ast::WhileStmt::create($2, $3); }
                 ;
 
-value           : TINTEGER { $$ = new ast::Constant(atoll($1->c_str())); delete $1; }
-                | TDOUBLE { $$ = new ast::Constant(atof($1->c_str())); delete $1; }
-                | TTRUE { $$ = new ast::Constant(true); }
-                | TFALSE { $$ = new ast::Constant(false); }
+value           : TINTEGER { $$ = ast::Constant::create(atoll($1->c_str())); delete $1; }
+                | TDOUBLE { $$ = ast::Constant::create(atof($1->c_str())); delete $1; }
+                | TTRUE { $$ = ast::Constant::create(true); }
+                | TFALSE { $$ = ast::Constant::create(false); }
                 ;
 
 %%

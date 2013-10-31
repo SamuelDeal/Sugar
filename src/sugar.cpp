@@ -11,15 +11,13 @@
 #include "gen/GeneratedCode.h"
 #include "parser/BatchParser.h"
 #include "ast/Block.h"
+#include "ast/Node.h"
 
 
 using namespace std;
 using namespace sugar;
 
-
-
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     FILE *file;
     if(argc > 1){
         file = fopen(argv[1],"r");
@@ -32,13 +30,12 @@ int main(int argc, char **argv)
         file = stdin;
     }
 
-
-    ast::Block programBlock;
+    ast::Node programStmts(ast::Node::eBlock, new ast::Block());
     parser::BatchParser parser;    
-    parser.parse(file, programBlock);
+    parser.parse(file, programStmts);
 
     gen::Generator generator;
-    gen::GeneratedCode *generated = generator.generate(&programBlock);
+    gen::GeneratedCode *generated = generator.generate(&programStmts);
 
 #if DEBUG_IR
     std::cerr << "\n========= Generated IR =========\n";

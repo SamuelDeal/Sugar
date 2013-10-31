@@ -1,24 +1,26 @@
 #ifndef SUGAR_AST_IFEXPRESSION_H
 #define SUGAR_AST_IFEXPRESSION_H
 
-#include "Expression.h"
+#include "NodeData.h"
 
 #include "../utils.h"
 
 namespace sugar {
 namespace ast {
 
-class Block;
+class Node;
 
-class IfExpression : public Expression
+class IfExpression : public NodeData
 {
 public:
-    IfExpression(Expression *cond, Block *thenBlk, Block *elseBlk = NULL);
+    static Node* create(Node *cond, Node *thenBlk, Node *elseBlk = NULL);
+
+    IfExpression(Node *cond, Node *thenBlk, Node *elseBlk = NULL);
     virtual ~IfExpression();
 
-    Expression *cond;
-    Block *thenBlk;
-    Block *elseBlk;
+    Node *cond;
+    Node *thenBlk;
+    Node *elseBlk;
 };
 
 } // namespace ast

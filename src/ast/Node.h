@@ -11,6 +11,8 @@ namespace core {
 
 namespace ast {
 
+class NodeData;
+
 class Node {
 public:
     enum Kind {
@@ -24,23 +26,22 @@ public:
         eAssignment,
         eVariableDeclaration,
         eFunctionDeclaration,
+        eArgumentDeclaration,
         eComparison,
-        eExpressionStmt,
         eOperator,
         eWhileStmt
     };
 
-protected:
-    Node(Kind type);
-
 public:
+    Node(Kind type, NodeData *data);
     virtual ~Node();
-
     Kind getKind() const;
+    NodeData *data;
 
     virtual bool isImplicitFunctionCall() const;
     const core::Type* getType() const;
     void setType(const core::Type& type);
+    void reset(Kind type, NodeData *data);
 
 protected:
     Kind _kind;

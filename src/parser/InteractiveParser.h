@@ -9,22 +9,21 @@
 namespace sugar {
 
 namespace ast {
-    class Block;
-    class Statement;
+    class Node;
 }
 
 namespace parser {
 
-typedef void (*stmtFunction)(ast::Block *programStmts, ast::Statement *stmt);
+typedef void (*stmtFunction)(ast::Node *programStmts, ast::Node *stmt);
 
 class InteractiveParser
 {
 public:
     InteractiveParser();
-    void parse(FILE *file, ast::Block &programStmt, stmtFunction callback = NULL) const;
+    void parse(FILE *file, ast::Node &programStmts, stmtFunction callback = NULL) const;
 
 protected:
-    void onProgramStmt(ast::Block *programStmts, ast::Statement *newStmt);
+    void onProgramStmt(ast::Node *programStmts, ast::Node *newStmt);
 };
 
 } // namespace parser

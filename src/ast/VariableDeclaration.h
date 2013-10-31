@@ -1,26 +1,31 @@
 #ifndef SUGAR_AST_VARIABLEDECLARATION_H
 #define SUGAR_AST_VARIABLEDECLARATION_H
 
-#include "Statement.h"
+#include "NodeData.h"
 
 #include "../utils.h"
 
 namespace sugar {
 namespace ast {
 
-class Identifier;
+class Node;
 class TypeIdentifier;
-class Expression;
+class Identifier;
 
-class VariableDeclaration : public Statement
+class VariableDeclaration : public NodeData
 {
 public:
-    VariableDeclaration(TypeIdentifier *type, Identifier *id, Expression *assign = NULL);
+    static Node* create(Node *type, Node *id, Node *assign = NULL);
+
+    VariableDeclaration(Node *type, Node *id, Node *assign = NULL);
     virtual ~VariableDeclaration();
 
-    TypeIdentifier *type;
-    Identifier *id;
-    Expression *assign;
+    TypeIdentifier* getType() const;
+    Identifier* getId() const;
+
+    Node *type;
+    Node *id;
+    Node *assign;
 };
 
 } // namespace ast

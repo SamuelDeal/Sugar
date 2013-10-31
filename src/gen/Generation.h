@@ -30,7 +30,9 @@ public:
     llvm::Module* getModule() const;
     std::string scopeHierarchy();
 
-protected:
+public:
+    // Used by passes
+
     llvm::Module *module;
     llvm::IRBuilder<> builder;
     llvm::LLVMContext context;
@@ -51,10 +53,6 @@ protected:
     llvm::ConstantInt *trueConst;
     llvm::ConstantInt *falseConst;
     llvm::Constant *intZero;
-
-    friend class Generator;
-    friend class Interpreter;
-    friend class Compiler;
 };
 
 } // namespace gen

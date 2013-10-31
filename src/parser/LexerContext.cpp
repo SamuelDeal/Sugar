@@ -2,13 +2,10 @@
 
 #include "../config_checked.h"
 
-#include "../ast/Statement.h"
-#include "../ast/Block.h"
-
 namespace sugar {
 namespace parser {
 
-LexerContext::LexerContext(ast::Block *programStmtsArg,
+LexerContext::LexerContext(ast::Node *programStmtsArg,
                             bool interactiveArg, stmtFunction callback)
 {
     interactive = interactiveArg;
@@ -27,7 +24,7 @@ LexerContext::LexerContext(ast::Block *programStmtsArg,
     indents.top()->current = 0;
 }
 
-void LexerContext::onProgramStmt(sugar::ast::Statement *stmt){
+void LexerContext::onProgramStmt(ast::Node *stmt){
     _callback(programStmts, stmt);
 }
 

@@ -9,7 +9,7 @@ Function::Function(const std::string &name, llvm::Function *fn, Type *returnType
     _name = name;
 }
 
-Function::Function(const std::string &name, gen::NativeFunction fn, Type* returnType, const std::list<const Type *> &argTypes):
+Function::Function(const std::string &name, NativeFunction fn, Type* returnType, const std::list<const Type *> &argTypes):
     AbstractFunction(fn, returnType, argTypes)
 {
     _name = name;

@@ -25,20 +25,19 @@ struct IndentContext {
 namespace sugar {
 
 namespace ast {
-    class Block;
-    class Statement;
+    class Node;
 }
 
 namespace parser {
 
-typedef void (*stmtFunction)(ast::Block *programStmts, ast::Statement *stmt);
+typedef void (*stmtFunction)(ast::Node *programStmts, ast::Node *stmt);
 
 
 class LexerContext
 {
 public:
-    LexerContext(ast::Block *programStmts, bool interactive, stmtFunction callback);
-    void onProgramStmt(sugar::ast::Statement *stmt);
+    LexerContext(ast::Node *programStmts, bool interactive, stmtFunction callback);
+    void onProgramStmt(ast::Node *stmt);
 
     IndentInfo indentContext;
     unsigned int lineIndents;
@@ -50,7 +49,7 @@ public:
     bool eof;
     void *scanner;
     bool interactive;
-    ast::Block *programStmts;
+    ast::Node *programStmts;
 
 protected:
     stmtFunction _callback;

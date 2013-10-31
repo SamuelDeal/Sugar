@@ -1,18 +1,23 @@
 #ifndef SUGAR_AST_BLOCK_H
 #define SUGAR_AST_BLOCK_H
 
-#include "Statement.h"
+#include "NodeData.h"
 #include <list>
 
 namespace sugar {
 namespace ast {
 
-class Block : public Statement
+class Node;
+
+class Block : public NodeData
 {
 public:
+    static Node* create();
+
     Block();
     virtual ~Block();
-    std::list<Statement *> stmts;
+    std::list<Node *> stmts;
+
     bool isFunction;
     unsigned int ifCount;
 };

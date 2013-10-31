@@ -1,21 +1,26 @@
 #ifndef SUGAR_AST_ASSIGNMENT_H
 #define SUGAR_AST_ASSIGNMENT_H
 
-#include "Statement.h"
+#include "NodeData.h"
+#include "Identifier.h"
 
 namespace sugar {
 namespace ast {
 
-class Identifier;
-class Expression;
+class Node;
 
-class Assignment : public Statement
+class Assignment : public NodeData
 {
 public:
-    Assignment(Identifier *left, Expression *right);
+    static Node* create(Node *left, Node *right);
+
+    Assignment(Node *left, Node *right);
     virtual ~Assignment();
-    Identifier *left;
-    Expression *right;
+
+    Identifier* getLeft() const;
+
+    Node *left;
+    Node *right;
 };
 
 } // namespace ast

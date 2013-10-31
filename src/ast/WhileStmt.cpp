@@ -1,20 +1,21 @@
 #include "WhileStmt.h"
 
-#include "Expression.h"
-#include "Block.h"
+#include "Node.h"
 
 namespace sugar {
 namespace ast {
 
-WhileStmt::WhileStmt(Expression *exprArg, Block *blockArg, bool testFirstArg): Statement(Node::eWhileStmt)
-{
+Node* WhileStmt::create(Node *expr, Node *block, bool testFirst){
+    return new Node(Node::eWhileStmt, new WhileStmt(expr, block, testFirst));
+}
+
+WhileStmt::WhileStmt(Node *exprArg, Node *blockArg, bool testFirstArg) {
     cond = exprArg;
     block = blockArg;
     testFirst = testFirstArg;
 }
 
-WhileStmt::~WhileStmt()
-{
+WhileStmt::~WhileStmt() {
     delete cond;
     delete block;
 }

@@ -9,7 +9,7 @@ namespace llvm {
 
 namespace sugar {
 namespace ast {
-    class Block;
+    class Node;
 }
 
 namespace gen {
@@ -19,18 +19,18 @@ class Generation;
 class GeneratedCode
 {
 public:
-    GeneratedCode(llvm::Function *function, Generation *gen, ast::Block *block);
+    GeneratedCode(llvm::Function *function, Generation *gen, ast::Node *block);
     ~GeneratedCode();
 
     llvm::Function* getFunction() const;
     llvm::Module* getModule() const;
-    ast::Block* getBlock() const;
+    ast::Node* getBlock() const;
     Generation* getGeneration() const;
 
 protected:
     llvm::Function *_function;
     Generation *_generation;
-    ast::Block *_block;
+    ast::Node *_block;
 };
 
 } // namespace gen

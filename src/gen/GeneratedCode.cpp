@@ -10,7 +10,7 @@
 namespace sugar {
 namespace gen {
 
-GeneratedCode::GeneratedCode(llvm::Function *function, Generation *gen, ast::Block *block) {
+GeneratedCode::GeneratedCode(llvm::Function *function, Generation *gen, ast::Node *block) {
     _function = function;
     _generation = gen;
     _block = block;
@@ -42,7 +42,7 @@ Generation* GeneratedCode::getGeneration() const {
     return _generation;
 }
 
-ast::Block* GeneratedCode::getBlock() const {
+ast::Node* GeneratedCode::getBlock() const {
     return _block;
 }
 

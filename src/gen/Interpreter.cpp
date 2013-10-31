@@ -21,6 +21,9 @@
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/ExecutionEngine/JIT.h>
 
+#include "pass/FunctionLookupPass.h"
+#include "pass/IrPass.h"
+
 namespace sugar {
 namespace gen {
 
@@ -30,7 +33,7 @@ Interpreter::Interpreter() {
 }
 
 Interpreter::~Interpreter() {
-    std::map<ast::Block *, Interpretation*>::iterator it;
+    std::map<ast::Node *, Interpretation*>::iterator it;
     for(it = _interpretations.begin(); it != _interpretations.end(); it++){
         delete(it->second);
         ++it;
@@ -43,9 +46,9 @@ Interpreter::Interpretation::~Interpretation() {
 }
 
 #if SHELL_USE_COLOR
-Interpreter::Interpretation* Interpreter::initProgram(ast::Block *block, bool useColor){
+Interpreter::Interpretation* Interpreter::initProgram(ast::Node *block, bool useColor){
 #else
-Interpreter::Interpretation* Interpreter::initProgram(ast::Block *block){
+Interpreter::Interpretation* Interpreter::initProgram(ast::Node *block){
 #endif
     Generation *generation = new Generation();
     Generation &gen = *generation;
@@ -65,11 +68,11 @@ Interpreter::Interpretation* Interpreter::initProgram(ast::Block *block){
 }
 
 #if SHELL_USE_COLOR
-Interpreter::Interpretation* Interpreter::getOrCreateInterpretation(ast::Block *programBlock, bool useColor){
+Interpreter::Interpretation* Interpreter::getOrCreateInterpretation(ast::Node *programBlock, bool useColor){
 #else
-Interpreter::Interpretation* Interpreter::getOrCreateInterpretation(ast::Block *programBlock){
+Interpreter::Interpretation* Interpreter::getOrCreateInterpretation(ast::Node *programBlock){
 #endif
-    std::map<ast::Block *, Interpretation*>::iterator it = _interpretations.find(programBlock);
+    std::map<ast::Node *, Interpretation*>::iterator it = _interpretations.find(programBlock);
     if(it == _interpretations.end()){
 #if SHELL_USE_COLOR
         it = _interpretations.insert(std::make_pair(programBlock, initProgram(programBlock, useColor))).first;
@@ -83,9 +86,9 @@ Interpreter::Interpretation* Interpreter::getOrCreateInterpretation(ast::Block *
 
 
 #if SHELL_USE_COLOR
-void Interpreter::run(ast::Statement *stmt, ast::Block *programBlock, bool interactive, bool useColor) {
+void Interpreter::run(ast::Node *stmt, ast::Node *programBlock, bool interactive, bool useColor) {
 #else
-void Interpreter::run(ast::Statement *stmt, ast::Block *programBlock, bool interactive) {
+void Interpreter::run(ast::Node *stmt, ast::Node *programBlock, bool interactive) {
 #endif
     static int count = 0;
     ++count;
@@ -97,12 +100,16 @@ void Interpreter::run(ast::Statement *stmt, ast::Block *programBlock, bool inter
     Generation &gen = *(intr.generatedCode->getGeneration());
     std::vector<llvm::Type*> argTypes;
     llvm::FunctionType *ftype = llvm::FunctionType::get(gen.voidType, llvm::makeArrayRef(argTypes), false);
+    pass::FunctionLookupPass fnPass;
+    pass::IrPass irPass;
+
 
     int stmtCount = 0;
-    for(std::list<ast::Statement*>::iterator it = programBlock->stmts.begin();
-            it != programBlock->stmts.end(); it++){
+    for(std::list<ast::Node*>::iterator it = ((ast::Block*)(programBlock->data))->stmts.begin();
+            it != ((ast::Block*)(programBlock->data))->stmts.end(); it++){
         if(stmtCount >= intr.stmtCount){
-            parseNode(*it, gen);
+            fnPass.parseNode(*it, gen);
+            irPass.parseNode(*it, gen);
         }
         ++stmtCount;
     }
@@ -113,7 +120,9 @@ void Interpreter::run(ast::Statement *stmt, ast::Block *programBlock, bool inter
     llvm::BasicBlock *runBlock = llvm::BasicBlock::Create(gen.context, "entry", runFunction, 0);
 
     gen.pushBlock(runBlock, ScopeType::Main|ScopeType::Function);
-    llvm::Value *value = parseNode(stmt, gen);
+
+    fnPass.parseNode(stmt, gen);
+    llvm::Value *value = irPass.parseNode(stmt, gen);
     if(interactive){
         printResult(value, stmt, gen);
     }
@@ -145,22 +154,24 @@ void Interpreter::run(ast::Statement *stmt, ast::Block *programBlock, bool inter
 #endif
 }
 
-void Interpreter::printResult(llvm::Value *value, ast::Statement *stmt, Generation &gen) const {
-    if(stmt->getType() != &gen.voidType){
-        std::list<Function*> functions = gen.scope->getFuncs("_ _echo_result");
-        std::list<const Type *> types;
-        std::vector<llvm::Value*> args;
-        types.push_back(stmt->getType());
-        args.push_back(value);
-        for(std::list<Function *>::iterator it = functions.begin(); it != functions.end(); it++){
-            Function *func = *it;
-            if(func->match(types, gen.castGraph)){
-                if(func->isNative()){
-                    CALL_MEMBER_FN(*this, func->getNative())(args, gen);
-                }
-                else{
-                    gen.builder.CreateCall(*func, makeArrayRef(args));
-                }
+void Interpreter::printResult(llvm::Value *value, ast::Node *stmt, Generation &gen) const {
+    if(stmt->getType() == &gen.voidType){
+        return;
+    }
+
+    std::list<Function*> functions = gen.scope->getFuncs("_ _echo_result");
+    std::list<const Type *> types;
+    std::vector<llvm::Value*> args;
+    types.push_back(stmt->getType());
+    args.push_back(value);
+    for(std::list<Function *>::iterator it = functions.begin(); it != functions.end(); it++){
+        Function *func = *it;
+        if(func->match(types, gen.castGraph)){
+            if(func->isNative()){
+                func->getNative()(args, gen);
+            }
+            else{
+                gen.builder.CreateCall(*func, makeArrayRef(args));
             }
         }
     }
@@ -235,139 +246,7 @@ Function* Interpreter::generateEchoBoolFunction(llvm::Function* printfFn, Genera
 }
 
 void Interpreter::initCore(Generation &gen) const {
-    gen.castGraph.addImplicitCast(new Cast(&AbstractGenerator::generateIntToFloatCast, &gen.floatType, &gen.intType));
 
-    std::list<const Type*> types;
-    types.push_back(&gen.intType);
-    types.push_back(&gen.intType);
-    Operator *op = new Operator(TPLUS, &AbstractGenerator::generateAddIntInt, &gen.intType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.floatType);
-    types.push_back(&gen.floatType);
-    op = new Operator(TPLUS, &AbstractGenerator::generateAddFloatFloat, &gen.floatType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.intType);
-    types.push_back(&gen.intType);
-    op = new Operator(TMINUS, &AbstractGenerator::generateSubIntInt, &gen.intType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.floatType);
-    types.push_back(&gen.floatType);
-    op = new Operator(TMINUS, &AbstractGenerator::generateSubFloatFloat, &gen.floatType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.intType);
-    types.push_back(&gen.intType);
-    op = new Operator(TMUL, &AbstractGenerator::generateMulIntInt, &gen.intType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.floatType);
-    types.push_back(&gen.floatType);
-    op = new Operator(TMUL, &AbstractGenerator::generateMulFloatFloat, &gen.floatType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.floatType);
-    types.push_back(&gen.floatType);
-    op = new Operator(TDIV, &AbstractGenerator::generateDivFloatFloat, &gen.floatType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.boolType);
-    types.push_back(&gen.boolType);
-    op = new Operator(TCEQ, &AbstractGenerator::generateEqBoolBool, &gen.boolType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.intType);
-    types.push_back(&gen.intType);
-    op = new Operator(TCEQ, &AbstractGenerator::generateEqIntInt, &gen.boolType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.boolType);
-    types.push_back(&gen.boolType);
-    op = new Operator(TCNE, &AbstractGenerator::generateNEqBoolBool, &gen.boolType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.intType);
-    types.push_back(&gen.intType);
-    op = new Operator(TCNE, &AbstractGenerator::generateNEqIntInt, &gen.boolType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.floatType);
-    types.push_back(&gen.floatType);
-    op = new Operator(TCNE, &AbstractGenerator::generateNEqFloatFloat, &gen.boolType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.intType);
-    types.push_back(&gen.intType);
-    op = new Operator(TCLT, &AbstractGenerator::generateLessIntInt, &gen.boolType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.floatType);
-    types.push_back(&gen.floatType);
-    op = new Operator(TCLT, &AbstractGenerator::generateLessFloatFloat, &gen.boolType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.intType);
-    types.push_back(&gen.intType);
-    op = new Operator(TCLE, &AbstractGenerator::generateLessEqIntInt, &gen.boolType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.floatType);
-    types.push_back(&gen.floatType);
-    op = new Operator(TCLE, &AbstractGenerator::generateLessEqFloatFloat, &gen.boolType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.intType);
-    types.push_back(&gen.intType);
-    op = new Operator(TCGT, &AbstractGenerator::generateMoreIntInt, &gen.boolType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.floatType);
-    types.push_back(&gen.floatType);
-    op = new Operator(TCGT, &AbstractGenerator::generateMoreFloatFloat, &gen.boolType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.intType);
-    types.push_back(&gen.intType);
-    op = new Operator(TCGE, &AbstractGenerator::generateMoreEqIntInt, &gen.boolType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.floatType);
-    types.push_back(&gen.floatType);
-    op = new Operator(TCGE, &AbstractGenerator::generateMoreEqFloatFloat, &gen.boolType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.boolType);
-    types.push_back(&gen.boolType);
-    op = new Operator(TAND, &AbstractGenerator::generateAndBoolBool, &gen.boolType, types);
-    gen.rootScope.addOperator(op);
-
-    types.clear();
-    types.push_back(&gen.boolType);
-    types.push_back(&gen.boolType);
-    op = new Operator(TOR, &AbstractGenerator::generateOrBoolBool, &gen.boolType, types);
-    gen.rootScope.addOperator(op);
 
     llvm::Function *printf = generatePrintfFunction(gen);
 

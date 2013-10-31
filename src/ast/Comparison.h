@@ -3,19 +3,23 @@
 
 #include <list>
 
-#include "Expression.h"
+#include "NodeData.h"
 
 namespace sugar {
 namespace ast {
 
-class Comparison : public Expression
+class Node;
+
+class Comparison : public NodeData
 {
 public:
-    Comparison(Expression *firstExpr);
+    static Node* create(Node *expression);
+
+    Comparison(Node *firstExpr);
     virtual ~Comparison();
 
-    void add(int operatorId, Expression *expression);
-    std::list<Expression *> expressions;
+    void add(int operatorId, Node *expression);
+    std::list<Node *> expressions;
     std::list<int> operators;
 };
 

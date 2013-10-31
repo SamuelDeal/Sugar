@@ -2,12 +2,16 @@
 
 #include "../utils.h"
 
-#include "Block.h"
+#include "Node.h"
 
 namespace sugar {
 namespace ast {
 
-IfExpression::IfExpression(Expression *cond, Block *thenBlk, Block *elseBlk) : Expression(Node::eIfExpression)
+Node* IfExpression::create(Node *cond, Node *thenBlk, Node *elseBlk) {
+    return new Node(Node::eIfExpression, new IfExpression(cond, thenBlk, elseBlk));
+}
+
+IfExpression::IfExpression(Node *cond, Node *thenBlk, Node *elseBlk)
 {
     this->cond = cond;
     this->thenBlk = thenBlk;

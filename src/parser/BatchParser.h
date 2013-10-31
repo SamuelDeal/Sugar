@@ -6,8 +6,7 @@
 namespace sugar {
 
 namespace ast {
-    class Block;
-    class Statement;
+    class Node;
 }
 
 namespace parser {
@@ -16,7 +15,7 @@ class BatchParser
 {
 public:
     BatchParser();
-    void parse(FILE *file, ast::Block &programStmts) const;
+    void parse(FILE *file, ast::Node &programStmts) const;
 };
 
 } // namespace parser

@@ -1,20 +1,25 @@
 #include "Comparison.h"
 
+#include "Node.h"
+
 namespace sugar {
 namespace ast {
 
-Comparison::Comparison(Expression *expression) : Expression(Node::eComparison)
-{
+Node* Comparison::create(Node *expression) {
+    return new Node(Node::eComparison, new Comparison(expression));
+}
+
+Comparison::Comparison(Node *expression) {
     this->expressions.push_back(expression);
 }
 
-void Comparison::add(int operatorId, Expression *expression){
+void Comparison::add(int operatorId, Node *expression){
     this->expressions.push_back(expression);
     this->operators.push_back(operatorId);
 }
 
 Comparison::~Comparison(){
-    for(std::list<Expression *>::iterator i = expressions.begin(); i != expressions.end(); i++){
+    for(std::list<Node *>::iterator i = expressions.begin(); i != expressions.end(); i++){
        delete (*i);
     }
 }

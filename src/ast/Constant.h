@@ -1,14 +1,20 @@
 #ifndef SUGAR_AST_CONSTANT_H
 #define SUGAR_AST_CONSTANT_H
 
-#include "Expression.h"
+#include "NodeData.h"
 
 namespace sugar {
 namespace ast {
 
-class Constant : public Expression
+class Node;
+
+class Constant : public NodeData
 {
 public:
+    static Node* create(long long integerVal);
+    static Node* create(double floatVal);
+    static Node* create(bool boolVal);
+
     enum ConstantType {
         eBoolean,
         eInteger,

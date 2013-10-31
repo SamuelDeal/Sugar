@@ -1,10 +1,13 @@
-#include "Statement.h"
+#include "NodeData.h"
 
 namespace sugar {
 namespace ast {
 
-Statement::Statement(Kind kind) : Node(kind)
-{
+
+NodeData::NodeData() {
+}
+
+NodeData::~NodeData() {
 }
 
 } // namespace ast

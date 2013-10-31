@@ -6,11 +6,12 @@
 namespace sugar {
 namespace core {
 
+
 class Function : public AbstractFunction
 {
 public:
     Function(const std::string &name, llvm::Function *fn, Type* returnType, const std::list<const Type *> &argTypes);
-    Function(const std::string &name, gen::NativeFunction fn, Type* returnType, const std::list<const Type *> &argTypes);
+    Function(const std::string &name, NativeFunction fn, Type* returnType, const std::list<const Type *> &argTypes);
 
     virtual ~Function();
 

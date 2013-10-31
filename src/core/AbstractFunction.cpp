@@ -13,7 +13,7 @@ AbstractFunction::AbstractFunction(llvm::Function *fn, Type* returnType, const s
     _impl.llvmFunction = fn;
 }
 
-AbstractFunction::AbstractFunction(gen::NativeFunction fn, Type* returnType, const std::list<const Type *> &argTypes):
+AbstractFunction::AbstractFunction(NativeFunction fn, Type* returnType, const std::list<const Type *> &argTypes):
     _argsTypes(argTypes), _returnType(returnType){
     _native = true;
     _impl.nativeFunction = fn;
@@ -50,7 +50,7 @@ AbstractFunction::operator llvm::Function*() const{
     return _impl.llvmFunction;
 }
 
-gen::NativeFunction AbstractFunction::getNative() const {
+NativeFunction AbstractFunction::getNative() const {
     return _impl.nativeFunction;
 }
 

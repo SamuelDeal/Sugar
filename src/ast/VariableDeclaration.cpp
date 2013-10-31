@@ -1,14 +1,15 @@
 #include "VariableDeclaration.h"
 
-#include "Identifier.h"
-#include "TypeIdentifier.h"
-#include "Expression.h"
+#include "Node.h"
 
 namespace sugar {
 namespace ast {
 
-VariableDeclaration::VariableDeclaration(TypeIdentifier *type, Identifier *id, Expression *assign) : Statement(Node::eVariableDeclaration)
-{
+Node* VariableDeclaration::create(Node *type, Node *id, Node *assign) {
+    return new Node(Node::eVariableDeclaration, new VariableDeclaration(type, id, assign));
+}
+
+VariableDeclaration::VariableDeclaration(Node *type, Node *id, Node *assign) {
     this->type = type;
     this->id = id;
     this->assign = assign;
@@ -16,10 +17,23 @@ VariableDeclaration::VariableDeclaration(TypeIdentifier *type, Identifier *id, E
 
 VariableDeclaration::~VariableDeclaration(){
     delete type;
-    delete id;
+    if(id != NULL){
+        delete id;
+    }
     if(assign != NULL){
         delete assign;
     }
+}
+
+TypeIdentifier* VariableDeclaration::getType() const {
+    return (TypeIdentifier*)type->data;
+}
+
+Identifier* VariableDeclaration::getId() const {
+    if(id == NULL){
+        return NULL;
+    }
+    return (Identifier*)id->data;
 }
 
 } // namespace ast

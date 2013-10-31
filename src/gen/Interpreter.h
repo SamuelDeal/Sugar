@@ -21,9 +21,9 @@ public:
     Interpreter();
     virtual ~Interpreter();
 #if SHELL_USE_COLOR
-    void run(ast::Statement *stmt, ast::Block *programBlock, bool interactive, bool useColor);
+    void run(ast::Node *stmt, ast::Node *programBlock, bool interactive, bool useColor);
 #else
-    void run(ast::Statement *stmt, ast::Block *programBlock, bool interactive);
+    void run(ast::Node *stmt, ast::Node *programBlock, bool interactive);
 #endif
 
 protected:
@@ -34,18 +34,16 @@ protected:
         GeneratedCode *generatedCode;
     };
 
-    std::map<ast::Block *, Interpretation*> _interpretations;
-
 #if SHELL_USE_COLOR
-    Interpretation* initProgram(ast::Block *programBlock, bool useColor);
-    Interpretation* getOrCreateInterpretation(ast::Block *programBlock, bool useColor);
+    Interpretation* initProgram(ast::Node *programBlock, bool useColor);
+    Interpretation* getOrCreateInterpretation(ast::Node *programBlock, bool useColor);
 #else
-    Interpretation* initProgram(ast::Block *programBlock);
-    Interpretation* getOrCreateInterpretation(ast::Block *programBlock);
+    Interpretation* initProgram(ast::Node *programBlock);
+    Interpretation* getOrCreateInterpretation(ast::Node *programBlock);
 #endif
 
 
-    void printResult(llvm::Value *value, ast::Statement *stmt, Generation &gen) const;
+    void printResult(llvm::Value *value, ast::Node *stmt, Generation &gen) const;
 
     virtual void initCore(Generation &gen) const;
 
@@ -56,6 +54,10 @@ protected:
     core::Function* generateEchoBoolResultFunction(llvm::Function* printfFn, Generation &gen) const;
     core::Function* generateEchoIntResultFunction(llvm::Function* printfFn, Generation &gen) const;
     core::Function* generateEchoDoubleResultFunction(llvm::Function* printfFn, Generation &gen) const;
+
+
+
+    std::map<ast::Node *, Interpretation*> _interpretations;
 };
 
 } // namespace gen

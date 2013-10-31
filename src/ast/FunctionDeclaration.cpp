@@ -1,33 +1,45 @@
 #include "FunctionDeclaration.h"
 
-#include "VariableDeclaration.h"
-#include "Identifier.h"
-#include "TypeIdentifier.h"
+#include "Node.h"
 #include "Block.h"
 
 namespace sugar {
 namespace ast {
 
-FunctionDeclaration::FunctionDeclaration(TypeIdentifier *type, Identifier *id, std::list<VariableDeclaration *> *arguments, Block *block) :
-    Statement(Node::eFunctionDeclaration)
-{
+Node* FunctionDeclaration::create(Node *type, Node *id, std::list<Node *> *arguments, Node *block) {
+    return new Node(Node::eFunctionDeclaration, new FunctionDeclaration(type, id, arguments, block));
+}
+
+FunctionDeclaration::FunctionDeclaration(Node *type, Node *id, std::list<Node *> *arguments, Node *block) {
     this->type = type;
     this->block = block;
     if(block != NULL){
-        block->isFunction = true;
+        dynamic_cast<Block*>(block->data)->isFunction = true;
     }
     this->id = id;
     this->arguments = arguments;
 }
 
 FunctionDeclaration::~FunctionDeclaration(){
-    for(std::list<VariableDeclaration *>::iterator i = arguments->begin(); i != arguments->end(); i++){
+    for(std::list<Node *>::iterator i = arguments->begin(); i != arguments->end(); i++){
         delete (*i);
     }
     delete type;
     delete block;
     delete id;
     delete arguments;
+}
+
+TypeIdentifier* FunctionDeclaration::getType() const {
+    return (TypeIdentifier*)type->data;
+}
+
+Identifier* FunctionDeclaration::getId() const {
+    return (Identifier*)id->data;
+}
+
+Block* FunctionDeclaration::getBlock() const {
+    return (Block*)block->data;
 }
 
 } // namespace ast

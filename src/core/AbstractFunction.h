@@ -3,31 +3,40 @@
 
 #include <string>
 #include <list>
+#include <vector>
 
-#include "../gen/AbstractGenerator.h"
+#include <llvm/Function.h>
 
 namespace llvm {
     class Function;
+    class Value;
 }
 
 namespace sugar {
+
+namespace gen {
+    class Generation;
+}
+
 namespace core {
 
 class Type;
 class CastGraph;
 
+typedef llvm::Value* (*NativeFunction)(std::vector<llvm::Value*>, gen::Generation &gen);
+
 class AbstractFunction
 {
 public:
     AbstractFunction(llvm::Function *fn, Type* returnType, const std::list<const Type *> &argTypes);
-    AbstractFunction(gen::NativeFunction fn, Type* returnType, const std::list<const Type *> &argTypes);
+    AbstractFunction(NativeFunction fn, Type* returnType, const std::list<const Type *> &argTypes);
 
     virtual ~AbstractFunction();
 
     bool isNative() const;
 
     bool match(const std::list<const Type*> &types, const CastGraph &castGraph) const;
-    gen::NativeFunction getNative() const;
+    NativeFunction getNative() const;
     const Type* getReturnType() const;
     operator llvm::Function*() const;
 
@@ -40,7 +49,7 @@ protected:
     bool _native;
     union {
         llvm::Function *llvmFunction;
-        gen::NativeFunction nativeFunction;
+        NativeFunction nativeFunction;
     } _impl;
 };
 

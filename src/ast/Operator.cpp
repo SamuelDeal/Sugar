@@ -1,24 +1,29 @@
 #include "Operator.h"
 
+#include "Node.h"
+
 namespace sugar {
 namespace ast {
 
-Operator::Operator(int operatorId, std::list<Expression*> *expressions, bool before) :
-    Expression(Node::eOperator) {
+Node* Operator::create(int operatorId, std::list<Node*> *expressions, bool before){
+    return new Node(Node::eOperator, new Operator(operatorId, expressions, before));
+}
+
+Operator::Operator(int operatorId, std::list<Node*> *expressions, bool before) {
     this->operatorId = operatorId;
     this->args = expressions;
     this->before = before;
 }
 
 Operator::~Operator(){
-    for(std::list<Expression *>::iterator i = args->begin(); i != args->end(); i++){
+    for(std::list<Node *>::iterator i = args->begin(); i != args->end(); i++){
        delete (*i);
     }
     delete args;
 }
 
 bool Operator::isImplicitFunctionCall() const{
-    for(std::list<Expression *>::iterator i = args->begin(); i != args->end(); i++){
+    for(std::list<Node *>::iterator i = args->begin(); i != args->end(); i++){
         if((*i)->isImplicitFunctionCall()){
             return true;
          }

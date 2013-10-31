@@ -1,18 +1,24 @@
 #ifndef SUGAR_AST_OPERATOR_H
 #define SUGAR_AST_OPERATOR_H
 
-#include "Expression.h"
+#include <list>
+
+#include "NodeData.h"
 
 namespace sugar {
 namespace ast {
 
-class Operator : public Expression
+class Node;
+
+class Operator : public NodeData
 {
 public:
-    Operator(int operatorId, std::list<Expression*> *expressions, bool before = false);
+    static Node* create(int operatorId, std::list<Node*> *expressions, bool before = false);
+
+    Operator(int operatorId, std::list<Node*> *expressions, bool before = false);
     virtual ~Operator();
 
-    std::list<Expression*> *args;
+    std::list<Node*> *args;
     int operatorId;
     bool before;
 

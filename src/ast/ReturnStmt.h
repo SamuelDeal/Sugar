@@ -1,18 +1,22 @@
 #ifndef SUGAR_AST_RETURNSTMT_H
 #define SUGAR_AST_RETURNSTMT_H
 
-#include "Statement.h"
-#include "Expression.h"
+#include "NodeData.h"
 
 namespace sugar {
 namespace ast {
 
-class ReturnStmt : public Statement
+class Node;
+
+class ReturnStmt : public NodeData
 {
 public:
-    ReturnStmt(Expression *expression);
+    static Node* create(Node *expression);
+
+    ReturnStmt(Node *expression);
     virtual ~ReturnStmt();
-    Expression* expression;
+
+    Node* expression;
 };
 
 } // namespace ast

@@ -1,10 +1,16 @@
 #include "ReturnStmt.h"
 
+#include "Node.h"
+
 namespace sugar {
 namespace ast {
 
-ReturnStmt::ReturnStmt(Expression *expression) : Statement(Node::eReturnStmt), expression(expression)
-{
+Node* ReturnStmt::create(Node *expression) {
+    return new Node(Node::eReturnStmt, new ReturnStmt(expression));
+}
+
+ReturnStmt::ReturnStmt(Node *expressionArg) {
+    expression = expressionArg;
 }
 
 ReturnStmt::~ReturnStmt() {
