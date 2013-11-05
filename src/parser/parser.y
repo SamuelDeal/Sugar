@@ -9,23 +9,22 @@
 #define YY_HEADER_EXPORT_START_CONDITIONS 1
 
 #include "lexer.h"
+#include "../ast/all.h"
 
 using namespace sugar;
 
 void yyerror(YYLTYPE *locp, sugar::parser::LexerContext *lexerCtx, const char *err);
 
 
-ast::Node* makeOperatorCall(ast::Node *subject, int operatorId, ast::Node *arg1){
+ast::Node* makeOperatorCall(ast::Node *subject, int operatorId, ast::Node *arg1, YYLTYPE yyloc){
     std::list<ast::Node *> *args = new std::list<ast::Node *>();
     args->push_back(subject);
     args->push_back(arg1);
-    return ast::Operator::create(operatorId, args);
+    return ast::Operator::create(operatorId, args, yyloc);
 }
 
-ast::Node* makeUnaryOperatorCall(ast::Node *subject, int operatorId, bool before){
-    std::list<ast::Node *> *args = new std::list<ast::Node *>();
-    args->push_back(subject);
-    return ast::Operator::create(operatorId, args, before);
+ast::Node* makeUnaryOperatorCall(ast::Node *subject, int operatorId, bool before, YYLTYPE yyloc){
+    return ast::Operator::create(operatorId, subject, before, yyloc);
 }
 
 %}
@@ -48,15 +47,19 @@ ast::Node* makeUnaryOperatorCall(ast::Node *subject, int operatorId, bool before
 %code requires {
 
 #include <iostream>
-#include "../ast/all.h"
+#include <list>
+
+namespace sugar {
+    namespace ast {
+        class Node;
+    }
+
+    namespace parser {
+        class LexerContext;
+    }
+}
 
 using namespace sugar;
-
-namespace sugar{
-namespace parser{
-    class LexerContext;
-}
-}
 
 }
 
@@ -70,6 +73,7 @@ namespace parser{
 
 %{
 #define scanner lexerCtx->scanner
+#include "../ast/all.h"
 %}
 
 /* Token list */
@@ -129,10 +133,10 @@ program_stmts   : program_stmt { lexerCtx->onProgramStmt($<stmt>1); }
                 ;
 
 block_stmts     : stmt TOK_END_INSTR {
-                    $$ = ast::Block::create();
-                    ((ast::Block*)($$->data))->stmts.push_back($<stmt>1);
+                    $$ = ast::Block::create(yyloc);
+                    ((ast::Block*)($$->data))->stmts->push_back($<stmt>1);
                 }
-                | block_stmts stmt TOK_END_INSTR { ((ast::Block*)($1->data))->stmts.push_back($<stmt>2); }
+                | block_stmts stmt TOK_END_INSTR { ((ast::Block*)($1->data))->stmts->push_back($<stmt>2); }
                 ;
 
 stmt            : action_stmt { $$ = $1; }
@@ -143,11 +147,11 @@ stmt            : action_stmt { $$ = $1; }
                     }
                     else {
                         ast::Block *block = new ast::Block();
-                        block->stmts.push_back($1);
+                        block->stmts->push_back($1);
                         std::string *varName = new std::string(*((ast::Identifier*)(varDecl->id->data))->name);
-                        block->stmts.push_back(ast::Assignment::create(ast::Identifier::create(varName), varDecl->assign));
+                        block->stmts->push_back(ast::Assignment::create(ast::Identifier::create(varName, yyloc), varDecl->assign, yyloc));
                         varDecl->assign = NULL;
-                        $$ = new ast::Node(ast::Node::eBlock, block);
+                        $$ = new ast::Node(ast::Node::eBlock, block, yyloc);
                     }
                 }
                 | if { $$ = $1; }
@@ -155,24 +159,24 @@ stmt            : action_stmt { $$ = $1; }
                 ;
 
 action_stmt     : expr { $$ = $1; }
-                | TRETURN expr { $$ = ast::ReturnStmt::create($2); }
-                | ident TEQUAL expr { $$ = ast::Assignment::create($<ident>1, $3); }
+                | TRETURN expr { $$ = ast::ReturnStmt::create($2, yyloc); }
+                | ident TEQUAL expr { $$ = ast::Assignment::create($<ident>1, $3, yyloc); }
                 ;
 
 program_stmt    : stmt TOK_END_INSTR { $$ = $1; }
                 | func_decl TOK_END_INSTR { $$ = $1; }
                 ;
 
-expr			: expr TMUL expr { $$ = makeOperatorCall($1, TMUL, $3); }
-                | expr TDIV expr { $$ = makeOperatorCall($1, TDIV, $3); }
-                | expr TPLUS expr { $$ = makeOperatorCall($1, TPLUS, $3); }
-                | expr TMINUS expr { $$ = makeOperatorCall($1, TMINUS, $3); }
-                | expr TAND expr { $$ = makeOperatorCall($1, TAND, $3); }
-                | expr TOR expr { $$ = makeOperatorCall($1, TOR, $3); }
-                | ident TOK_NO_SPACE TPLUSPLUS %prec UNARY { $$ = makeUnaryOperatorCall($1, TPLUSPLUS, false); }
-                | ident TOK_NO_SPACE TMINUSMINUS %prec UNARY { $$ = makeUnaryOperatorCall($1, TMINUSMINUS, false); }
-                | TPLUSPLUS TOK_NO_SPACE ident %prec UNARY { $$ = makeUnaryOperatorCall($3, TPLUSPLUS, true); }
-                | TMINUSMINUS TOK_NO_SPACE ident %prec UNARY { $$ = makeUnaryOperatorCall($3, TMINUSMINUS, true); }
+expr			: expr TMUL expr { $$ = makeOperatorCall($1, TMUL, $3, yyloc); }
+                | expr TDIV expr { $$ = makeOperatorCall($1, TDIV, $3, yyloc); }
+                | expr TPLUS expr { $$ = makeOperatorCall($1, TPLUS, $3, yyloc); }
+                | expr TMINUS expr { $$ = makeOperatorCall($1, TMINUS, $3, yyloc); }
+                | expr TAND expr { $$ = makeOperatorCall($1, TAND, $3, yyloc); }
+                | expr TOR expr { $$ = makeOperatorCall($1, TOR, $3, yyloc); }
+                | ident TOK_NO_SPACE TPLUSPLUS %prec UNARY { $$ = makeUnaryOperatorCall($1, TPLUSPLUS, false, yyloc); }
+                | ident TOK_NO_SPACE TMINUSMINUS %prec UNARY { $$ = makeUnaryOperatorCall($1, TMINUSMINUS, false, yyloc); }
+                | TPLUSPLUS TOK_NO_SPACE ident %prec UNARY { $$ = makeUnaryOperatorCall($3, TPLUSPLUS, true, yyloc); }
+                | TMINUSMINUS TOK_NO_SPACE ident %prec UNARY { $$ = makeUnaryOperatorCall($3, TMINUSMINUS, true, yyloc); }
                 | func_call { $$ = $1; }
                 | TLPAREN expr TRPAREN { $$ = $2; }
                 | value { $$ = $1; }
@@ -184,25 +188,25 @@ expr			: expr TMUL expr { $$ = makeOperatorCall($1, TMUL, $3); }
                 | if_else { $$ = $1; }
                 ;
 
-comp_diff       : expr TCNE expr { $$ = ast::Comparison::create($1); ((ast::Comparison*)($$->data))->add(TCNE, $3); }
+comp_diff       : expr TCNE expr { $$ = ast::Comparison::create($1, yyloc); ((ast::Comparison*)($$->data))->add(TCNE, $3); }
                 ;
 
-comp_eq         : expr TCEQ expr { $$ = ast::Comparison::create($1); ((ast::Comparison*)($$->data))->add(TCEQ, $3); }
+comp_eq         : expr TCEQ expr { $$ = ast::Comparison::create($1, yyloc); ((ast::Comparison*)($$->data))->add(TCEQ, $3); }
                 | comp_eq TCEQ expr  { ((ast::Comparison*)($1->data))->add(TCEQ, $3); $$ = $1; }
                 ;
 
-comp_less       : expr TCLT expr  { $$ = ast::Comparison::create($1); ((ast::Comparison*)($$->data))->add(TCLT, $3); }
-                | expr TCLE expr { $$ = ast::Comparison::create($1); ((ast::Comparison*)($$->data))->add(TCLE, $3); }
+comp_less       : expr TCLT expr  { $$ = ast::Comparison::create($1, yyloc); ((ast::Comparison*)($$->data))->add(TCLT, $3); }
+                | expr TCLE expr { $$ = ast::Comparison::create($1, yyloc); ((ast::Comparison*)($$->data))->add(TCLE, $3); }
                 | comp_less TCLT expr { ((ast::Comparison*)($1->data))->add(TCLT, $3); $$ = $1; }
                 | comp_less TCLE expr { ((ast::Comparison*)($1->data))->add(TCLE, $3); $$ = $1; }
                 ;
 
 comp_more       : expr TCGT expr {
-                    $$ = ast::Comparison::create($1);
+                    $$ = ast::Comparison::create($1, yyloc);
                     ((ast::Comparison*)($$->data))->add(TCGT, $3);
                 }
                 | expr TCGE expr {
-                    $$ = ast::Comparison::create($1);
+                    $$ = ast::Comparison::create($1, yyloc);
                     ((ast::Comparison*)($$->data))->add(TCGE, $3);
                 }
                 | comp_more TCGT expr  {
@@ -222,9 +226,9 @@ func_call       : ident func_call_args %prec CALL_IMPL {
                             yyerror(&yyloc, lexerCtx, "implicit call forbidden here");
                         }
                     }
-                    $$ = ast::FunctionCall::create($1, false, $2); }
-                | ident TOK_NO_SPACE TLPAREN func_call_args TRPAREN %prec CALL_EXPL { $$ = ast::FunctionCall::create($1, true, $4); }
-                | ident TOK_NO_SPACE TLPAREN TRPAREN { $$ = ast::FunctionCall::create($1, true, new std::list<ast::Node*>()); }
+                    $$ = ast::FunctionCall::create($1, false, $2, yyloc); }
+                | ident TOK_NO_SPACE TLPAREN func_call_args TRPAREN %prec CALL_EXPL { $$ = ast::FunctionCall::create($1, true, $4, yyloc); }
+                | ident TOK_NO_SPACE TLPAREN TRPAREN { $$ = ast::FunctionCall::create($1, true, new std::list<ast::Node*>(), yyloc); }
                 ;
 
 func_call_args  : expr %prec FUNC_CALL_ARG {
@@ -237,39 +241,41 @@ func_call_args  : expr %prec FUNC_CALL_ARG {
                 }
                 ;
 
-typename        : TTYPENAME { $$ = ast::TypeIdentifier::create($1); }
+typename        : TTYPENAME { $$ = ast::TypeIdentifier::create($1, yyloc); }
                 ;
 
-ident           : TIDENTIFIER { $$ = ast::Identifier::create($1); }
+ident           : TIDENTIFIER { $$ = ast::Identifier::create($1, yyloc); }
                 ;
 
-var_decl        : typename ident { $$ = ast::VariableDeclaration::create($1, $2); }
-                | typename ident TEQUAL expr { $$ = ast::VariableDeclaration::create($1, $2, $4); }
+var_decl        : typename ident { $$ = ast::VariableDeclaration::create($1, $2, yyloc); }
+                | typename ident TEQUAL expr { $$ = ast::VariableDeclaration::create($1, $2, $4, yyloc); }
                 ;
 
 block           : pre_block { $$ = $1; }
                 | TCOLON pre_block { $$ = $2; }
                 | TCOLON expr %prec COLON_EXPR {
-                    $$ = ast::Block::create();
-                    ((ast::Block*)($$->data))->stmts.push_back($2);
+                    $$ = ast::Block::create(yyloc);
+                    ((ast::Block*)($$->data))->stmts->push_back($2);
                 }
                 ;
 
 pre_block       : TLBRACE block_stmts TRBRACE { $$ = $2; }
-                | TLBRACE TRBRACE { $$ = ast::Block::create(); }
+                | TLBRACE TRBRACE { $$ = ast::Block::create(yyloc); }
                 | TOK_INDENT block_stmts TOK_OUTDENT { $$ = $2; }
                 ;
 
-func_decl       : typename ident TOK_NO_SPACE TLPAREN func_decl_args TRPAREN block { $$ = ast::FunctionDeclaration::create($1, $2, $5, $7); }
+func_decl       : typename ident TOK_NO_SPACE TLPAREN func_decl_args TRPAREN block {
+                    $$ = ast::FunctionDeclaration::create($1, $2, $5, ast::FunctionImplementation::create((ast::Block*)$7->data, yyloc), yyloc);
+                }
                 ;
 
 func_decl_args  : /*blank*/  { $$ = new std::list<ast::Node*>(); }
                 | var_decl {
                     $$ = new std::list<ast::Node*>();
-                    $$->push_back(ast::ArgumentDeclaration::create((ast::VariableDeclaration*)($<var_decl>1->data)));
+                    $$->push_back(ast::ArgumentDeclaration::create((ast::VariableDeclaration*)($<var_decl>1->data), yyloc));
                 }
                 | func_decl_args TCOMMA var_decl {
-                    $1->push_back(ast::ArgumentDeclaration::create((ast::VariableDeclaration*)($<var_decl>3->data)));
+                    $1->push_back(ast::ArgumentDeclaration::create((ast::VariableDeclaration*)($<var_decl>3->data), yyloc));
                     $$ = $1;
                 }
                 ;
@@ -277,27 +283,27 @@ func_decl_args  : /*blank*/  { $$ = new std::list<ast::Node*>(); }
 if_expr         : TIF expr { $$ = $2; }
                 ;
 
-if              : if_expr block %prec IF_ALONE { $$ = ast::IfExpression::create($1, $2); }
+if              : if_expr block %prec IF_ALONE { $$ = ast::IfExpression::create($1, $2, yyloc); }
                 | action_stmt if_expr {
-                    ast::Node* tmp = ast::Block::create();
-                    ((ast::Block*)(tmp->data))->stmts.push_back($<stmt>1);
-                    $$ = ast::IfExpression::create($2, tmp);
+                    ast::Node* tmp = ast::Block::create(yyloc);
+                    ((ast::Block*)(tmp->data))->stmts->push_back($<stmt>1);
+                    $$ = ast::IfExpression::create($2, tmp, yyloc);
                 }
                 ;
 
-if_else         : if_expr block else block { $$ = ast::IfExpression::create($1, $2, $4); }
+if_else         : if_expr block else block { $$ = ast::IfExpression::create($1, $2, $4, yyloc); }
                 ;
 
 else            : TELSE { }
                 ;
 
-while           : TWHILE expr block { $$ = ast::WhileStmt::create($2, $3); }
+while           : TWHILE expr block { $$ = ast::WhileStmt::create($2, $3, yyloc); }
                 ;
 
-value           : TINTEGER { $$ = ast::Constant::create(atoll($1->c_str())); delete $1; }
-                | TDOUBLE { $$ = ast::Constant::create(atof($1->c_str())); delete $1; }
-                | TTRUE { $$ = ast::Constant::create(true); }
-                | TFALSE { $$ = ast::Constant::create(false); }
+value           : TINTEGER { $$ = ast::Constant::create(atoll($1->c_str()), yyloc); delete $1; }
+                | TDOUBLE { $$ = ast::Constant::create(atof($1->c_str()), yyloc); delete $1; }
+                | TTRUE { $$ = ast::Constant::create(true, yyloc); }
+                | TFALSE { $$ = ast::Constant::create(false, yyloc); }
                 ;
 
 %%

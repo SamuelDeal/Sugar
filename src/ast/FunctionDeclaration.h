@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <list>
+#include "../parser/parser.hpp"
 
 namespace sugar {
 namespace ast {
@@ -12,24 +13,24 @@ namespace ast {
 class Node;
 class TypeIdentifier;
 class Identifier;
-class Block;
+class FunctionImplementation;
 
 class FunctionDeclaration : public NodeData
 {
 public:
-    static Node* create(Node *type, Node *id, std::list<Node *> *arguments, Node *block);
+    static Node* create(Node *type, Node *id, std::list<Node *> *arguments, Node *impl, YYLTYPE yyloc);
 
-    FunctionDeclaration(Node *type, Node *id, std::list<Node *> *arguments, Node *block);
+    FunctionDeclaration(Node *type, Node *id, std::list<Node *> *arguments, Node *impl);
     virtual ~FunctionDeclaration();
 
     TypeIdentifier* getType() const;
     Identifier* getId() const;
-    Block* getBlock() const;
+    FunctionImplementation* getImplementation() const;
 
     Node *type;
     Node *id;
     std::list<Node *> *arguments;
-    Node *block;
+    Node *impl;
 };
 
 } // namespace ast

@@ -3,12 +3,16 @@
 #include "../parser/parser.hpp"
 #include "../core/Operator.h"
 #include "../core/Cast.h"
+#include "../ast/Node.h"
 
 namespace sugar {
 namespace types {
 
 Int::Int()
 {
+}
+
+Int::~Int() {
 }
 
 void Int::generate(gen::Generation &gen) const {
@@ -81,76 +85,76 @@ void Int::generate(gen::Generation &gen) const {
     gen.castGraph.addImplicitCast(new core::Cast(&fnImpl_intToFloat, &gen.floatType, &gen.intType));
 }
 
-llvm::Value* Int::fnImpl_add(std::vector<llvm::Value*> values, gen::Generation &gen) {
-    return gen.builder.CreateAdd(values[0], values[1]);
+llvm::Value* Int::fnImpl_add(std::vector<ast::Node*> values, gen::Generation &gen) {
+    return gen.builder.CreateAdd(values[0]->getValue(), values[1]->getValue());
 }
 
-llvm::Value* Int::fnImpl_sub(std::vector<llvm::Value*> values, gen::Generation &gen) {
-    return gen.builder.CreateSub(values[0], values[1]);
+llvm::Value* Int::fnImpl_sub(std::vector<ast::Node*> values, gen::Generation &gen) {
+    return gen.builder.CreateSub(values[0]->getValue(), values[1]->getValue());
 }
 
-llvm::Value* Int::fnImpl_mul(std::vector<llvm::Value*> values, gen::Generation &gen) {
-    return gen.builder.CreateMul(values[0], values[1]);
+llvm::Value* Int::fnImpl_mul(std::vector<ast::Node*> values, gen::Generation &gen) {
+    return gen.builder.CreateMul(values[0]->getValue(), values[1]->getValue());
 }
 
-llvm::Value* Int::fnImpl_eq(std::vector<llvm::Value*> values, gen::Generation &gen) {
-    return gen.builder.CreateICmpEQ(values[0], values[1]);
+llvm::Value* Int::fnImpl_eq(std::vector<ast::Node*> values, gen::Generation &gen) {
+    return gen.builder.CreateICmpEQ(values[0]->getValue(), values[1]->getValue());
 }
 
-llvm::Value* Int::fnImpl_NotEq(std::vector<llvm::Value*> values, gen::Generation &gen) {
-    return gen.builder.CreateICmpNE(values[0], values[1]);
+llvm::Value* Int::fnImpl_NotEq(std::vector<ast::Node*> values, gen::Generation &gen) {
+    return gen.builder.CreateICmpNE(values[0]->getValue(), values[1]->getValue());
 }
 
-llvm::Value* Int::fnImpl_less(std::vector<llvm::Value*> values, gen::Generation &gen) {
-    return gen.builder.CreateICmpSLT(values[0], values[1]);
+llvm::Value* Int::fnImpl_less(std::vector<ast::Node*> values, gen::Generation &gen) {
+    return gen.builder.CreateICmpSLT(values[0]->getValue(), values[1]->getValue());
 }
 
-llvm::Value* Int::fnImpl_lessOrEq(std::vector<llvm::Value*> values, gen::Generation &gen) {
-    return gen.builder.CreateICmpSLE(values[0], values[1]);
+llvm::Value* Int::fnImpl_lessOrEq(std::vector<ast::Node*> values, gen::Generation &gen) {
+    return gen.builder.CreateICmpSLE(values[0]->getValue(), values[1]->getValue());
 }
 
-llvm::Value* Int::fnImpl_more(std::vector<llvm::Value*> values, gen::Generation &gen) {
-    return gen.builder.CreateICmpSGT(values[0], values[1]);
+llvm::Value* Int::fnImpl_more(std::vector<ast::Node*> values, gen::Generation &gen) {
+    return gen.builder.CreateICmpSGT(values[0]->getValue(), values[1]->getValue());
 }
 
-llvm::Value* Int::fnImpl_moreOrEq(std::vector<llvm::Value*> values, gen::Generation &gen) {
-    return gen.builder.CreateICmpSGE(values[0], values[1]);
+llvm::Value* Int::fnImpl_moreOrEq(std::vector<ast::Node*> values, gen::Generation &gen) {
+    return gen.builder.CreateICmpSGE(values[0]->getValue(), values[1]->getValue());
 }
 
-llvm::Value* Int::fnImpl_intToFloat(std::vector<llvm::Value*> values, gen::Generation &gen) {
-    return gen.builder.CreateFPToSI(values[0], gen.floatType);
+llvm::Value* Int::fnImpl_intToFloat(std::vector<ast::Node*> values, gen::Generation &gen) {
+    return gen.builder.CreateFPToSI(values[0]->getValue(), gen.floatType);
 }
 
-llvm::Value* Int::fnImpl_PreInc(std::vector<llvm::Value*> values, gen::Generation &gen) {
-    llvm::Value* result = gen.builder.CreateAdd(values[0], llvm::ConstantInt::get(gen.intType, 1, true));
-    llvm::StoreInst *assign = gen.builder.CreateStore(result, values[0]);
-    return assign;
+llvm::Value* Int::fnImpl_PreInc(std::vector<ast::Node*> values, gen::Generation &gen) {
+    llvm::Value* result = gen.builder.CreateAdd(values[0]->getValue(), llvm::ConstantInt::get(gen.intType, 1, true));
+    llvm::StoreInst *assign = gen.builder.CreateStore(result, values[0]->getRef());
+    return result;
 }
 
-llvm::Value* Int::fnImpl_PostInc(std::vector<llvm::Value*> values, gen::Generation &gen) {
-    llvm::AllocaInst *tmpValue = gen.builder.CreateAlloca(gen.intType);
-    llvm::StoreInst *assignTmp = gen.builder.CreateStore(values[0], tmpValue);
+llvm::Value* Int::fnImpl_PostInc(std::vector<ast::Node*> values, gen::Generation &gen) {
+    //llvm::AllocaInst *tmpValue = gen.builder.CreateAlloca(gen.intType);
+    //llvm::StoreInst *assignTmp = gen.builder.CreateStore(values[0]->getValue(), tmpValue);
 
-    llvm::Value* result = gen.builder.CreateAdd(values[0], llvm::ConstantInt::get(gen.intType, 1, true));
-    gen.builder.CreateStore(result, values[0]);
+    llvm::Value* result = gen.builder.CreateAdd(values[0]->getValue(), llvm::ConstantInt::get(gen.intType, 1, true));
+    gen.builder.CreateStore(result, values[0]->getRef());
 
-    return assignTmp;
+    return values[0]->getValue();
 }
 
-llvm::Value* Int::fnImpl_PreDec(std::vector<llvm::Value*> values, gen::Generation &gen) {
-    llvm::Value* result = gen.builder.CreateSub(values[0], llvm::ConstantInt::get(gen.intType, 1, true));
-    llvm::StoreInst *assign = gen.builder.CreateStore(result, values[0]);
-    return assign;
+llvm::Value* Int::fnImpl_PreDec(std::vector<ast::Node*> values, gen::Generation &gen) {
+    llvm::Value* result = gen.builder.CreateSub(values[0]->getValue(), llvm::ConstantInt::get(gen.intType, 1, true));
+    llvm::StoreInst *assign = gen.builder.CreateStore(result, values[0]->getRef());
+    return result;
 }
 
-llvm::Value* Int::fnImpl_PostDec(std::vector<llvm::Value*> values, gen::Generation &gen) {
-    llvm::AllocaInst *tmpValue = gen.builder.CreateAlloca(gen.intType);
-    llvm::StoreInst *assignTmp = gen.builder.CreateStore(values[0], tmpValue);
+llvm::Value* Int::fnImpl_PostDec(std::vector<ast::Node*> values, gen::Generation &gen) {
+    //llvm::AllocaInst *tmpValue = gen.builder.CreateAlloca(gen.intType);
+    //llvm::StoreInst *assignTmp = gen.builder.CreateStore(values[0]->getValue(), tmpValue);
 
-    llvm::Value* result = gen.builder.CreateSub(values[0], llvm::ConstantInt::get(gen.intType, 1, true));
-    gen.builder.CreateStore(result, values[0]);
+    llvm::Value* result = gen.builder.CreateSub(values[0]->getValue(), llvm::ConstantInt::get(gen.intType, 1, true));
+    gen.builder.CreateStore(result, values[0]->getRef());
 
-    return assignTmp;
+    return values[0]->getValue();
 }
 
 } // namespace types

@@ -7,9 +7,14 @@
 namespace sugar {
 namespace ast {
 
-Node* IfExpression::create(Node *cond, Node *thenBlk, Node *elseBlk) {
-    return new Node(Node::eIfExpression, new IfExpression(cond, thenBlk, elseBlk));
+Node* IfExpression::create(Node *cond, Node *thenBlk, Node *elseBlk, YYLTYPE yyloc) {
+    return new Node(Node::eIfExpression, new IfExpression(cond, thenBlk, elseBlk), yyloc);
 }
+
+Node* IfExpression::create(Node *cond, Node *thenBlk, YYLTYPE yyloc) {
+    return new Node(Node::eIfExpression, new IfExpression(cond, thenBlk, NULL), yyloc);
+}
+
 
 IfExpression::IfExpression(Node *cond, Node *thenBlk, Node *elseBlk)
 {

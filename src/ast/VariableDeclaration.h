@@ -4,6 +4,7 @@
 #include "NodeData.h"
 
 #include "../utils.h"
+#include "../parser/parser.hpp"
 
 namespace sugar {
 namespace ast {
@@ -15,9 +16,10 @@ class Identifier;
 class VariableDeclaration : public NodeData
 {
 public:
-    static Node* create(Node *type, Node *id, Node *assign = NULL);
+    static Node* create(Node *type, Node *id, Node *assign, YYLTYPE yyloc);
+    static Node* create(Node *type, Node *id, YYLTYPE yyloc);
 
-    VariableDeclaration(Node *type, Node *id, Node *assign = NULL);
+    VariableDeclaration(Node *type, Node *id, Node *assign);
     virtual ~VariableDeclaration();
 
     TypeIdentifier* getType() const;

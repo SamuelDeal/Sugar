@@ -73,16 +73,17 @@ SOURCES += \
     src/parser/BatchParser.cpp \
     src/parser/InteractiveParser.cpp \
     src/parser/LexerContext.cpp \
-    src/gen/pass/AstPass.cpp \
     src/gen/pass/AbstractPass.cpp \
-    src/ast/NodeData.cpp \
     src/types/Int.cpp \
     src/types/BuiltinType.cpp \
     src/types/Float.cpp \
     src/types/Bool.cpp \
     src/gen/pass/IrPass.cpp \
     src/ast/ArgumentDeclaration.cpp \
-    src/gen/pass/FunctionLookupPass.cpp
+    src/gen/pass/FunctionLookupPass.cpp \
+    src/ast/FunctionImplementation.cpp \
+    src/core/LanguageError.cpp \
+    src/ast/NodeData.cpp
 
 HEADERS += \
     codegen.h \
@@ -157,9 +158,7 @@ HEADERS += \
     src/parser/InteractiveParser.h \
     src/parser/LexerContext.h \
     src/config_checked.h \
-    src/gen/pass/AstPass.h \
     src/gen/pass/AbstractPass.h \
-    src/ast/NodeData.h \
     src/types/all.h \
     src/types/Int.h \
     src/types/BuiltinType.h \
@@ -167,7 +166,13 @@ HEADERS += \
     src/types/Bool.h \
     src/gen/pass/IrPass.h \
     src/ast/ArgumentDeclaration.h \
-    src/gen/pass/FunctionLookupPass.h
+    src/gen/pass/FunctionLookupPass.h \
+    src/ast/FunctionImplementation.h \
+    src/gen/NodeResult.h \
+    src/core/LanguageError.h \
+    src/ast/NodeData.h \
+    src/utils/Getter.h \
+    src/utils/Getter.tpl.h
 
 OTHER_FILES += \
     parser.y \

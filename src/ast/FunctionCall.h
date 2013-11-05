@@ -6,6 +6,7 @@
 
 #include "NodeData.h"
 #include "../core/Function.h"
+#include "../parser/parser.hpp"
 
 namespace sugar {
 namespace ast {
@@ -17,7 +18,7 @@ class Identifier;
 class FunctionCall : public NodeData
 {
 public:
-    static Node* create(Node *ident, bool explicitCall, std::list<Node *> *expressions);
+    static Node* create(Node *ident, bool explicitCall, std::list<Node *> *expressions, YYLTYPE yyloc);
 
     FunctionCall(Node *ident, bool explicitCall, std::list<Node *> *expressions);
     virtual ~FunctionCall();

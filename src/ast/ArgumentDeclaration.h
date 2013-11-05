@@ -2,7 +2,7 @@
 #define SUGAR_AST_ARGUMENTDECLARATION_H
 
 #include "NodeData.h"
-
+#include "../parser/parser.hpp"
 #include "../utils.h"
 
 namespace sugar {
@@ -15,10 +15,11 @@ class VariableDeclaration;
 
 class ArgumentDeclaration : public NodeData {
 public:
-    static Node* create(Node *type, Node *id, Node *defaultValue = NULL);
-    static Node* create(VariableDeclaration *data);
+    static Node* create(Node *type, Node *id, Node *defaultValue, YYLTYPE yyloc);
+    static Node* create(Node *type, Node *id, YYLTYPE yyloc);
+    static Node* create(VariableDeclaration *data, YYLTYPE yyloc);
 
-    ArgumentDeclaration(Node *type, Node *id, Node *defaultValue = NULL);
+    ArgumentDeclaration(Node *type, Node *id, Node *defaultValue);
     virtual ~ArgumentDeclaration();
 
     TypeIdentifier* getType() const;

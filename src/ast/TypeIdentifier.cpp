@@ -5,12 +5,12 @@
 namespace sugar {
 namespace ast {
 
-Node* TypeIdentifier::create(std::string *name) {
-    return new Node(Node::eTypeIdentifier, new TypeIdentifier(name));
+Node* TypeIdentifier::create(std::string *name, YYLTYPE yyloc) {
+    return new Node(Node::eTypeIdentifier, new TypeIdentifier(name), yyloc);
 }
 
-Node* TypeIdentifier::create(Node* expression) {
-    return new Node(Node::eTypeIdentifier, new TypeIdentifier(expression));
+Node* TypeIdentifier::create(Node* expression, YYLTYPE yyloc) {
+    return new Node(Node::eTypeIdentifier, new TypeIdentifier(expression), yyloc);
 }
 
 TypeIdentifier::TypeIdentifier(std::string *name) {

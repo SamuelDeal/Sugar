@@ -1,6 +1,6 @@
 #include "BatchParser.h"
 
-#include "../config.h"
+#include "../config_checked.h"
 #define INTERACTIVE_INPUT 0
 #include "lexer.batch.hpp"
 
@@ -14,7 +14,7 @@ BatchParser::BatchParser()
 }
 
 void BatchParser_onProgramStmt(ast::Node *programStmts, ast::Node *newStmt){
-    ((ast::Block *)(programStmts->data))->stmts.push_back(newStmt);
+    ((ast::Block *)(programStmts->data))->stmts->push_back(newStmt);
 }
 
 void BatchParser::parse(FILE *file, ast::Node &programStmts) const {

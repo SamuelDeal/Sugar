@@ -5,8 +5,8 @@
 namespace sugar {
 namespace ast {
 
-Node* Identifier::create(std::string *name) {
-    return new Node(Node::eIdentifier, new Identifier(name));
+Node* Identifier::create(std::string *name, YYLTYPE yylloc) {
+    return new Node(Node::eIdentifier, new Identifier(name), yylloc);
 }
 
 Identifier::Identifier(std::string *name) {

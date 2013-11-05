@@ -2,6 +2,12 @@
 #define NODE_H
 
 #include <list>
+#include "../parser/parser.hpp"
+#include "../utils/Getter.h"
+
+namespace llvm {
+    class Value;
+}
 
 namespace sugar {
 
@@ -21,6 +27,7 @@ public:
         eIdentifier,
         eTypeIdentifier,
         eFunctionCall,
+        eFunctionImplementation,
         eIfExpression,
         eReturnStmt,
         eAssignment,
@@ -33,7 +40,7 @@ public:
     };
 
 public:
-    Node(Kind type, NodeData *data);
+    Node(Kind type, NodeData *data, YYLTYPE yylloc);
     virtual ~Node();
     Kind getKind() const;
     NodeData *data;
@@ -42,10 +49,19 @@ public:
     const core::Type* getType() const;
     void setType(const core::Type& type);
     void reset(Kind type, NodeData *data);
+    YYLTYPE yylloc;
+
+    void setRef(llvm::Value*);
+    void setValue(utils::Getter<llvm::Value*> getter);
+    llvm::Value *getValue();
+    llvm::Value *getRef();
 
 protected:
     Kind _kind;
     const core::Type *_type;
+    utils::Getter<llvm::Value*> _value;
+    llvm::Value* _ref;
+
 };
 
 } // namespace ast

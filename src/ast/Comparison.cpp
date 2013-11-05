@@ -5,8 +5,8 @@
 namespace sugar {
 namespace ast {
 
-Node* Comparison::create(Node *expression) {
-    return new Node(Node::eComparison, new Comparison(expression));
+Node* Comparison::create(Node *expression, YYLTYPE yyloc) {
+    return new Node(Node::eComparison, new Comparison(expression), yyloc);
 }
 
 Comparison::Comparison(Node *expression) {

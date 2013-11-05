@@ -5,8 +5,12 @@
 namespace sugar {
 namespace ast {
 
-Node* VariableDeclaration::create(Node *type, Node *id, Node *assign) {
-    return new Node(Node::eVariableDeclaration, new VariableDeclaration(type, id, assign));
+Node* VariableDeclaration::create(Node *type, Node *id, Node *assign, YYLTYPE yyloc) {
+    return new Node(Node::eVariableDeclaration, new VariableDeclaration(type, id, assign), yyloc);
+}
+
+Node* VariableDeclaration::create(Node *type, Node *id, YYLTYPE yyloc) {
+    return new Node(Node::eVariableDeclaration, new VariableDeclaration(type, id, NULL), yyloc);
 }
 
 VariableDeclaration::VariableDeclaration(Node *type, Node *id, Node *assign) {

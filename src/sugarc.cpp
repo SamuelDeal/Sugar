@@ -21,7 +21,8 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    ast::Node programStmts(ast::Node::eBlock, new ast::Block());
+    YYLTYPE locStart;
+    ast::Node programStmts(ast::Node::eBlock, new ast::Block(), locStart);
     parser::BatchParser parser;
     parser.parse(file, programStmts);
 

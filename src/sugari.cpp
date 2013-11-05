@@ -27,7 +27,7 @@ bool useColor = false;
 void onMainStatement(ast::Node *programStmts, ast::Node *newStmt) {
     if((newStmt->getKind() == ast::Node::eFunctionDeclaration) ||
            (newStmt->getKind() == ast::Node::eVariableDeclaration)){
-        ((ast::Block*)(programStmts->data))->stmts.push_back(newStmt);
+        ((ast::Block*)(programStmts->data))->stmts->push_back(newStmt);
     }
     else {
 #if SHELL_USE_COLOR
@@ -52,7 +52,8 @@ int main(int argc, char **argv) {
     }
 
     interpreter = new gen::Interpreter();
-    programStmts = ast::Block::create();
+    YYLTYPE locStart;
+    programStmts = ast::Block::create(locStart);
 
     interactive = (stdin == file);
 #ifndef OS_WINDOWS

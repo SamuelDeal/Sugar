@@ -8,12 +8,16 @@ namespace ast {
 
 class VariableDeclaration;
 
-Node* ArgumentDeclaration::create(Node *type, Node *id, Node *defaultValue) {
-    return new Node(Node::eArgumentDeclaration, new ArgumentDeclaration(type, id, defaultValue));
+Node* ArgumentDeclaration::create(Node *type, Node *id, Node *defaultValue, YYLTYPE yyloc) {
+    return new Node(Node::eArgumentDeclaration, new ArgumentDeclaration(type, id, defaultValue), yyloc);
 }
 
-Node* ArgumentDeclaration::create(VariableDeclaration *data) {
-    return new Node(Node::eArgumentDeclaration, new ArgumentDeclaration(data->type, data->id, data->assign));
+Node* ArgumentDeclaration::create(Node *type, Node *id, YYLTYPE yyloc) {
+    return new Node(Node::eArgumentDeclaration, new ArgumentDeclaration(type, id, NULL), yyloc);
+}
+
+Node* ArgumentDeclaration::create(VariableDeclaration *data, YYLTYPE yyloc) {
+    return new Node(Node::eArgumentDeclaration, new ArgumentDeclaration(data->type, data->id, data->assign), yyloc);
 }
 
 ArgumentDeclaration::ArgumentDeclaration(Node *type, Node *id, Node *defaultValue) {

@@ -7,11 +7,14 @@
 
 #define CALL_MEMBER_FN(object,ptrToMember)  ((object).*(ptrToMember))
 
+/*
+#error __cplusplus
 #if __cplusplus < 201103L //C++11
 namespace std {
     std::string to_string(int i);
     std::string to_string(unsigned int i);
 }
 #endif
+*/
 
 #endif // UTILS_H

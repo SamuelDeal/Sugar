@@ -2,6 +2,7 @@
 #define SUGAR_AST_WHILESTMT_H
 
 #include "NodeData.h"
+#include "../parser/parser.hpp"
 
 namespace sugar {
 namespace ast {
@@ -11,9 +12,10 @@ class Node;
 class WhileStmt : public NodeData
 {
 public:
-    static Node* create(Node *expr, Node *block, bool testFirst = false);
+    static Node* create(Node *expr, Node *block, bool testFirst, YYLTYPE yyloc);
+    static Node* create(Node *expr, Node *block, YYLTYPE yyloc);
 
-    WhileStmt(Node *expr, Node *block, bool testFirst = false);
+    WhileStmt(Node *expr, Node *block, bool testFirst);
     virtual ~WhileStmt();
 
     Node *cond;

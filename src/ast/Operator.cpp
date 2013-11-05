@@ -1,12 +1,17 @@
 #include "Operator.h"
 
 #include "Node.h"
+#include <iostream>
 
 namespace sugar {
 namespace ast {
 
-Node* Operator::create(int operatorId, std::list<Node*> *expressions, bool before){
-    return new Node(Node::eOperator, new Operator(operatorId, expressions, before));
+Node* Operator::create(int operatorId, Node *expression, bool before, YYLTYPE yyloc){
+    return new Node(Node::eOperator, new Operator(operatorId, new std::list<Node *>(1, expression), before), yyloc);
+}
+
+Node* Operator::create(int operatorId, std::list<Node*> *expressions, YYLTYPE yyloc) {
+    return new Node(Node::eOperator, new Operator(operatorId, expressions, false), yyloc);
 }
 
 Operator::Operator(int operatorId, std::list<Node*> *expressions, bool before) {

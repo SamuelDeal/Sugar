@@ -3,6 +3,8 @@
 
 #include "NodeData.h"
 #include <list>
+#include <cstddef>
+#include "../parser/parser.hpp"
 
 namespace sugar {
 namespace ast {
@@ -12,14 +14,12 @@ class Node;
 class Block : public NodeData
 {
 public:
-    static Node* create();
+    static Node* create(YYLTYPE yyloc);
 
     Block();
     virtual ~Block();
-    std::list<Node *> stmts;
-
-    bool isFunction;
-    unsigned int ifCount;
+    void clear();
+    std::list<Node *> *stmts;
 };
 
 } // namespace ast

@@ -2,6 +2,7 @@
 #define SUGAR_AST_CONSTANT_H
 
 #include "NodeData.h"
+#include "../parser/parser.hpp"
 
 namespace sugar {
 namespace ast {
@@ -11,9 +12,9 @@ class Node;
 class Constant : public NodeData
 {
 public:
-    static Node* create(long long integerVal);
-    static Node* create(double floatVal);
-    static Node* create(bool boolVal);
+    static Node* create(long long integerVal, YYLTYPE yyloc);
+    static Node* create(double floatVal, YYLTYPE yyloc);
+    static Node* create(bool boolVal, YYLTYPE yyloc);
 
     enum ConstantType {
         eBoolean,

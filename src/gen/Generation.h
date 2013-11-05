@@ -3,11 +3,13 @@
 
 #include <llvm/IRBuilder.h>
 #include <llvm/LLVMContext.h>
+#include <list>
 
 #include "../core/Scope.h"
 #include "../core/CastGraph.h"
 #include "../core/Type.h"
 #include "../config_checked.h"
+#include "../utils/Getter.h"
 
 namespace llvm {
     class Module;
@@ -53,6 +55,12 @@ public:
     llvm::ConstantInt *trueConst;
     llvm::ConstantInt *falseConst;
     llvm::Constant *intZero;
+
+    llvm::Function* getInternalFunction(const std::string &name);
+    void addInternalFunction(const std::string &name, utils::Getter<llvm::Function*>);
+
+protected:
+    std::map<const std::string, utils::Getter<llvm::Function*> > _internalFunctions;
 };
 
 } // namespace gen

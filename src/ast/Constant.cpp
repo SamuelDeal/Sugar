@@ -6,16 +6,16 @@ namespace sugar {
 namespace ast {
 
 
-Node* Constant::create(long long integerVal) {
-    return new Node(Node::eConstant, new Constant(integerVal));
+Node* Constant::create(long long integerVal, YYLTYPE yyloc) {
+    return new Node(Node::eConstant, new Constant(integerVal), yyloc);
 }
 
-Node* Constant::create(double floatVal) {
-    return new Node(Node::eConstant, new Constant(floatVal));
+Node* Constant::create(double floatVal, YYLTYPE yyloc) {
+    return new Node(Node::eConstant, new Constant(floatVal), yyloc);
 }
 
-Node* Constant::create(bool boolVal) {
-    return new Node(Node::eConstant, new Constant(boolVal));
+Node* Constant::create(bool boolVal, YYLTYPE yyloc) {
+    return new Node(Node::eConstant, new Constant(boolVal), yyloc);
 }
 
 Constant::Constant(long long integerVal) {

@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <llvm/Function.h>
+#include <functional>
 
 namespace llvm {
     class Function;
@@ -13,6 +14,10 @@ namespace llvm {
 }
 
 namespace sugar {
+
+namespace ast {
+    class Node;
+}
 
 namespace gen {
     class Generation;
@@ -23,12 +28,13 @@ namespace core {
 class Type;
 class CastGraph;
 
-typedef llvm::Value* (*NativeFunction)(std::vector<llvm::Value*>, gen::Generation &gen);
+typedef llvm::Value* (*NativeFunction)(std::vector<ast::Node*>, gen::Generation &gen);
 
 class AbstractFunction
 {
 public:
-    AbstractFunction(llvm::Function *fn, Type* returnType, const std::list<const Type *> &argTypes);
+    AbstractFunction(llvm::Function* function, Type* returnType, const std::list<const Type *> &argTypes);
+    AbstractFunction(std::function<llvm::Function * ()> generator, Type* returnType, const std::list<const Type *> &argTypes);
     AbstractFunction(NativeFunction fn, Type* returnType, const std::list<const Type *> &argTypes);
 
     virtual ~AbstractFunction();
@@ -38,13 +44,14 @@ public:
     bool match(const std::list<const Type*> &types, const CastGraph &castGraph) const;
     NativeFunction getNative() const;
     const Type* getReturnType() const;
-    operator llvm::Function*() const;
+    operator llvm::Function*();
 
 protected:
     const Type *_returnType;
     std::list<const Type *> _argsTypes;
     std::list<Type *> _argsNames;
     std::list<bool> _argsHasDefaultValue;
+    std::function<llvm::Function* ()> _generator;
 
     bool _native;
     union {

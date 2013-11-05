@@ -45,7 +45,7 @@ public:
     void addVar(Variable *variable);
     void addType(Type *type);
     std::list<Function*> getFuncs(const std::string &name) const;
-    std::list<Operator*> getOps(int operatorToken) const;
+    std::list<Operator*> getOps(int operatorToken, bool before) const;
     Variable* getVar(const std::string &name) const;
     Type* getType(const std::string &name) const;
     unsigned int ifCount;
@@ -58,10 +58,10 @@ public:
     bool isReturnReach();
 
 protected:
-    std::multimap<std::string, Function*> _functions;
+    std::multimap<const std::string, Function*> _functions;
     std::multimap<int, Operator*> _operators;
-    std::map<std::string, Variable *> _variables;
-    std::map<std::string, Type *> _types;
+    std::map<const std::string, Variable *> _variables;
+    std::map<const std::string, Type *> _types;
     Scope *_parent;
     llvm::BasicBlock *_block;
     unsigned int _type;

@@ -3,22 +3,26 @@
 
 #include "BuiltinType.h"
 
-
-
 namespace sugar {
+
+namespace ast {
+    class Node;
+}
+
 namespace types {
 
 class Bool : public BuiltinType
 {
 public:
     Bool();
+    virtual ~Bool();
 
     virtual void generate(gen::Generation &gen) const;
 
-    static llvm::Value* fnImpl_eq(std::vector<llvm::Value*> values, gen::Generation &gen);
-    static llvm::Value* fnImpl_notEq(std::vector<llvm::Value*> values, gen::Generation &gen);
-    static llvm::Value* fnImpl_and(std::vector<llvm::Value*> values, gen::Generation &gen);
-    static llvm::Value* fnImpl_or(std::vector<llvm::Value*> values, gen::Generation &gen);
+    static llvm::Value* fnImpl_eq(std::vector<ast::Node*> values, gen::Generation &gen);
+    static llvm::Value* fnImpl_notEq(std::vector<ast::Node*> values, gen::Generation &gen);
+    static llvm::Value* fnImpl_and(std::vector<ast::Node*> values, gen::Generation &gen);
+    static llvm::Value* fnImpl_or(std::vector<ast::Node*> values, gen::Generation &gen);
 };
 
 } // namespace types

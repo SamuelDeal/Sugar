@@ -7,10 +7,17 @@
 namespace sugar {
 namespace core {
 
-AbstractFunction::AbstractFunction(llvm::Function *fn, Type* returnType, const std::list<const Type *> &argTypes):
+AbstractFunction::AbstractFunction(std::function<llvm::Function * ()> generator, Type* returnType, const std::list<const Type *> &argTypes):
     _argsTypes(argTypes), _returnType(returnType){
     _native = false;
-    _impl.llvmFunction = fn;
+    _impl.llvmFunction = NULL;
+    _generator = generator;
+}
+
+AbstractFunction::AbstractFunction(llvm::Function* function, Type* returnType, const std::list<const Type *> &argTypes):
+    _argsTypes(argTypes), _returnType(returnType){
+    _native = false;
+    _impl.llvmFunction = function;
 }
 
 AbstractFunction::AbstractFunction(NativeFunction fn, Type* returnType, const std::list<const Type *> &argTypes):
@@ -43,9 +50,12 @@ bool AbstractFunction::match(const std::list<const Type *> &argsTypes, const Cas
     return mine == _argsTypes.end();
 }
 
-AbstractFunction::operator llvm::Function*() const{
+AbstractFunction::operator llvm::Function*() {
     if(_native){
         return NULL;
+    }
+    if(_impl.llvmFunction == NULL){
+        _impl.llvmFunction = _generator();
     }
     return _impl.llvmFunction;
 }

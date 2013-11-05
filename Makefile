@@ -11,10 +11,12 @@ OBJS = $(SRCS:.cpp=.o)
 TESTS = $(shell find ./test -type f -name '*.test' | sort )
 TESTS := $(TESTS:.test=)
 
-CPPFLAGS += `llvm-config --cppflags` 
+CPPFLAGS +=  -std=c++0x `llvm-config --cppflags` 
 LDFLAGS += `llvm-config --ldflags`
 LIBS += `llvm-config --libs` -ledit -lreadline -lcurses
 CC = 'g++'
+# CC = 'clang'
+LINKER = 'g++'
 
 DEPS := $(patsubst %.o,%.d,$(OBJS))
 
@@ -49,7 +51,7 @@ src/parser/lexer.batch.hpp: src/parser/lexer.l
 	
 src/parser/lexer.h: src/parser/lexer.inter.hpp
 
-%.o: %.cpp src/config.h
+%.o: %.cpp src/config.h src/parser/parser.hpp
 	$(CC) -ggdb -c $(CPPFLAGS) -o $@ $<
 	
 src/sugar.o: src/parser/lexer.batch.hpp src/parser/parser.hpp src/parser/lexer.batch.hpp
@@ -59,13 +61,13 @@ src/sugari.o: src/parser/lexer.inter.hpp src/parser/parser.hpp src/parser/lexer.
 src/sugarc.o: src/parser/lexer.batch.hpp src/parser/parser.hpp src/parser/lexer.batch.hpp
 
 sugar: src/sugar.o $(filter-out ./src/parser/InteractiveParser.o, $(OBJS))
-	$(CC) -ggdb -o $@ $^ $(LIBS) $(LDFLAGS)
+	$(LINKER) -ggdb -o $@ $^ $(LIBS) $(LDFLAGS)
 
 sugari: src/sugari.o $(filter-out ./src/parser/BatchParser.o, $(OBJS))
-	$(CC) -ggdb -o $@ $^ $(LIBS) $(LDFLAGS)
+	$(LINKER) -ggdb -o $@ $^ $(LIBS) $(LDFLAGS)
 
 sugarc: src/sugarc.o $(filter-out ./src/parser/InteractiveParser.o, $(OBJS))
-	$(CC) -ggdb -o $@ $^ $(LIBS) $(LDFLAGS)
+	$(LINKER) -ggdb -o $@ $^ $(LIBS) $(LDFLAGS)
 
 %.result: %.test sugar
 	./sugar $< > $@ || echo "error"

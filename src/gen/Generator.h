@@ -6,6 +6,7 @@
 
 #include "../core/Scope.h"
 #include "../core/CastGraph.h"
+#include "../utils/Getter.h"
 
 namespace sugar {
 
@@ -30,10 +31,9 @@ public:
 protected:
     virtual void initCore(Generation &gen) const;
 
-    virtual llvm::Function* generatePrintfFunction(Generation &gen) const;
-    virtual core::Function* generateEchoBoolFunction(llvm::Function* printfFn, Generation &gen) const;
-    virtual core::Function* generateEchoIntFunction(llvm::Function* printfFn, Generation &gen) const;
-    virtual core::Function* generateEchoDoubleFunction(llvm::Function* printfFn, Generation &gen) const;
+    virtual core::Function* generateEchoBoolFunction(Generation &gen) const;
+    virtual core::Function* generateEchoIntFunction(Generation &gen) const;
+    virtual core::Function* generateEchoFloatFunction(Generation &gen) const;
 };
 
 } // namespace gen

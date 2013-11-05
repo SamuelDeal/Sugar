@@ -5,8 +5,8 @@
 namespace sugar {
 namespace ast {
 
-Node* ReturnStmt::create(Node *expression) {
-    return new Node(Node::eReturnStmt, new ReturnStmt(expression));
+Node* ReturnStmt::create(Node *expression, YYLTYPE yyloc) {
+    return new Node(Node::eReturnStmt, new ReturnStmt(expression), yyloc);
 }
 
 ReturnStmt::ReturnStmt(Node *expressionArg) {

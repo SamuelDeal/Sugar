@@ -2,6 +2,7 @@
 
 #include <sstream>
 
+/*
 #if __cplusplus < 201103L //C++11
 namespace std {
 
@@ -17,5 +18,7 @@ std::string to_string(unsigned int i){
     return out.str();
 }
 
+
 }
 #endif
+*/

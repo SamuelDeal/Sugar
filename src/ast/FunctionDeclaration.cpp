@@ -1,21 +1,18 @@
 #include "FunctionDeclaration.h"
 
 #include "Node.h"
-#include "Block.h"
+#include "FunctionImplementation.h"
 
 namespace sugar {
 namespace ast {
 
-Node* FunctionDeclaration::create(Node *type, Node *id, std::list<Node *> *arguments, Node *block) {
-    return new Node(Node::eFunctionDeclaration, new FunctionDeclaration(type, id, arguments, block));
+Node* FunctionDeclaration::create(Node *type, Node *id, std::list<Node *> *arguments, Node *impl, YYLTYPE yyloc) {
+    return new Node(Node::eFunctionDeclaration, new FunctionDeclaration(type, id, arguments, impl), yyloc);
 }
 
-FunctionDeclaration::FunctionDeclaration(Node *type, Node *id, std::list<Node *> *arguments, Node *block) {
+FunctionDeclaration::FunctionDeclaration(Node *type, Node *id, std::list<Node *> *arguments, Node *impl) {
     this->type = type;
-    this->block = block;
-    if(block != NULL){
-        dynamic_cast<Block*>(block->data)->isFunction = true;
-    }
+    this->impl = impl;
     this->id = id;
     this->arguments = arguments;
 }
@@ -25,7 +22,7 @@ FunctionDeclaration::~FunctionDeclaration(){
         delete (*i);
     }
     delete type;
-    delete block;
+    delete impl;
     delete id;
     delete arguments;
 }
@@ -38,8 +35,8 @@ Identifier* FunctionDeclaration::getId() const {
     return (Identifier*)id->data;
 }
 
-Block* FunctionDeclaration::getBlock() const {
-    return (Block*)block->data;
+FunctionImplementation* FunctionDeclaration::getImplementation() const {
+    return (FunctionImplementation*)(impl->data);
 }
 
 } // namespace ast

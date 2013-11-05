@@ -105,8 +105,8 @@ void Interpreter::run(ast::Node *stmt, ast::Node *programBlock, bool interactive
 
 
     int stmtCount = 0;
-    for(std::list<ast::Node*>::iterator it = ((ast::Block*)(programBlock->data))->stmts.begin();
-            it != ((ast::Block*)(programBlock->data))->stmts.end(); it++){
+    for(std::list<ast::Node*>::iterator it = ((ast::Block*)(programBlock->data))->stmts->begin();
+            it != ((ast::Block*)(programBlock->data))->stmts->end(); it++){
         if(stmtCount >= intr.stmtCount){
             fnPass.parseNode(*it, gen);
             irPass.parseNode(*it, gen);
@@ -122,9 +122,9 @@ void Interpreter::run(ast::Node *stmt, ast::Node *programBlock, bool interactive
     gen.pushBlock(runBlock, ScopeType::Main|ScopeType::Function);
 
     fnPass.parseNode(stmt, gen);
-    llvm::Value *value = irPass.parseNode(stmt, gen);
+    irPass.parseNode(stmt, gen);
     if(interactive){
-        printResult(value, stmt, gen);
+        printResult(stmt->getValue(), stmt, gen);
     }
     gen.popBlock();
 
@@ -162,13 +162,15 @@ void Interpreter::printResult(llvm::Value *value, ast::Node *stmt, Generation &g
     std::list<Function*> functions = gen.scope->getFuncs("_ _echo_result");
     std::list<const Type *> types;
     std::vector<llvm::Value*> args;
+    std::vector<ast::Node*> nodeArgs;
     types.push_back(stmt->getType());
     args.push_back(value);
+    nodeArgs.push_back(stmt);
     for(std::list<Function *>::iterator it = functions.begin(); it != functions.end(); it++){
         Function *func = *it;
         if(func->match(types, gen.castGraph)){
             if(func->isNative()){
-                func->getNative()(args, gen);
+                func->getNative()(nodeArgs, gen);
             }
             else{
                 gen.builder.CreateCall(*func, makeArrayRef(args));
@@ -177,7 +179,7 @@ void Interpreter::printResult(llvm::Value *value, ast::Node *stmt, Generation &g
     }
 }
 
-Function* Interpreter::generateEchoBoolFunction(llvm::Function* printfFn, Generation &gen) const {
+Function* Interpreter::generateEchoBoolFunction(Generation &gen) const {
     std::vector<llvm::Type*> echo_arg_types;
     echo_arg_types.push_back(gen.boolType);
 
@@ -237,7 +239,7 @@ Function* Interpreter::generateEchoBoolFunction(llvm::Function* printfFn, Genera
 
     std::vector<llvm::Value*> args;
     args.push_back(displayed);
-    llvm::CallInst *call = llvm::CallInst::Create(printfFn, makeArrayRef(args), "", bblock);
+    llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
     llvm::ReturnInst::Create(gen.context, bblock);
 
     std::list<const Type *> types;
@@ -246,20 +248,14 @@ Function* Interpreter::generateEchoBoolFunction(llvm::Function* printfFn, Genera
 }
 
 void Interpreter::initCore(Generation &gen) const {
+    Generator::initCore(gen);
 
-
-    llvm::Function *printf = generatePrintfFunction(gen);
-
-    gen.rootScope.addFunction(generateEchoBoolFunction(printf, gen));
-    gen.rootScope.addFunction(generateEchoIntFunction(printf, gen));
-    gen.rootScope.addFunction(generateEchoDoubleFunction(printf, gen));
-
-    gen.rootScope.addFunction(generateEchoBoolResultFunction(printf, gen));
-    gen.rootScope.addFunction(generateEchoIntResultFunction(printf, gen));
-    gen.rootScope.addFunction(generateEchoDoubleResultFunction(printf, gen));
+    gen.rootScope.addFunction(generateEchoBoolResultFunction(gen));
+    gen.rootScope.addFunction(generateEchoIntResultFunction(gen));
+    gen.rootScope.addFunction(generateEchoFloatResultFunction(gen));
 }
 
-Function* Interpreter::generateEchoIntFunction(llvm::Function* printfFn, Generation &gen) const {
+Function* Interpreter::generateEchoIntFunction(Generation &gen) const {
     std::vector<llvm::Type*> echo_arg_types;
     echo_arg_types.push_back(gen.intType);
 
@@ -301,7 +297,7 @@ Function* Interpreter::generateEchoIntFunction(llvm::Function* printfFn, Generat
     toPrint->setName("toPrint");
     args.push_back(toPrint);
 
-    llvm::CallInst *call = llvm::CallInst::Create(printfFn, makeArrayRef(args), "", bblock);
+    llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
     llvm::ReturnInst::Create(gen.context, bblock);
 
     std::list<const Type *> types;
@@ -309,7 +305,7 @@ Function* Interpreter::generateEchoIntFunction(llvm::Function* printfFn, Generat
     return new Function("echo", func, &gen.voidType, types);
 }
 
-Function* Interpreter::generateEchoDoubleFunction(llvm::Function* printfFn, Generation &gen) const {
+Function* Interpreter::generateEchoFloatFunction(Generation &gen) const {
     std::vector<llvm::Type*> echo_arg_types;
     echo_arg_types.push_back(gen.floatType);
 
@@ -351,7 +347,7 @@ Function* Interpreter::generateEchoDoubleFunction(llvm::Function* printfFn, Gene
     toPrint->setName("toPrint");
     args.push_back(toPrint);
 
-    llvm::CallInst *call = llvm::CallInst::Create(printfFn, makeArrayRef(args), "", bblock);
+    llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
     llvm::ReturnInst::Create(gen.context, bblock);
     //context.popBlock();
 
@@ -360,7 +356,7 @@ Function* Interpreter::generateEchoDoubleFunction(llvm::Function* printfFn, Gene
     return new Function("echo", func, &gen.voidType, types);
 }
 
-Function* Interpreter::generateEchoBoolResultFunction(llvm::Function* printfFn, Generation &gen) const {
+Function* Interpreter::generateEchoBoolResultFunction(Generation &gen) const {
     std::vector<llvm::Type*> echo_arg_types;
     echo_arg_types.push_back(gen.boolType);
 
@@ -421,7 +417,7 @@ Function* Interpreter::generateEchoBoolResultFunction(llvm::Function* printfFn, 
 
     std::vector<llvm::Value*> args;
     args.push_back(displayed);
-    llvm::CallInst *call = llvm::CallInst::Create(printfFn, makeArrayRef(args), "", bblock);
+    llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
     llvm::ReturnInst::Create(gen.context, bblock);
 
     std::list<const Type *> types;
@@ -429,7 +425,7 @@ Function* Interpreter::generateEchoBoolResultFunction(llvm::Function* printfFn, 
     return new Function("_ _echo_result", func, &gen.voidType, types);
 }
 
-Function* Interpreter::generateEchoIntResultFunction(llvm::Function* printfFn, Generation &gen) const {
+Function* Interpreter::generateEchoIntResultFunction(Generation &gen) const {
     std::vector<llvm::Type*> echo_arg_types;
     echo_arg_types.push_back(gen.intType);
 
@@ -471,7 +467,7 @@ Function* Interpreter::generateEchoIntResultFunction(llvm::Function* printfFn, G
     toPrint->setName("toPrint");
     args.push_back(toPrint);
 
-    llvm::CallInst *call = llvm::CallInst::Create(printfFn, makeArrayRef(args), "", bblock);
+    llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
     llvm::ReturnInst::Create(gen.context, bblock);
 
     std::list<const Type *> types;
@@ -479,7 +475,7 @@ Function* Interpreter::generateEchoIntResultFunction(llvm::Function* printfFn, G
     return new Function("_ _echo_result", func, &gen.voidType, types);
 }
 
-Function* Interpreter::generateEchoDoubleResultFunction(llvm::Function* printfFn, Generation &gen) const {
+Function* Interpreter::generateEchoFloatResultFunction(Generation &gen) const {
     std::vector<llvm::Type*> echo_arg_types;
     echo_arg_types.push_back(gen.floatType);
 
@@ -521,7 +517,7 @@ Function* Interpreter::generateEchoDoubleResultFunction(llvm::Function* printfFn
     toPrint->setName("toPrint");
     args.push_back(toPrint);
 
-    llvm::CallInst *call = llvm::CallInst::Create(printfFn, makeArrayRef(args), "", bblock);
+    llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
     llvm::ReturnInst::Create(gen.context, bblock);
     //context.popBlock();
 

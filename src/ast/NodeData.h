@@ -4,7 +4,6 @@
 namespace sugar {
 namespace ast {
 
-
 class NodeData
 {
 public:

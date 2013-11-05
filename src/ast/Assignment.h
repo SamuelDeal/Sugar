@@ -3,6 +3,7 @@
 
 #include "NodeData.h"
 #include "Identifier.h"
+#include "../parser/parser.hpp"
 
 namespace sugar {
 namespace ast {
@@ -12,7 +13,7 @@ class Node;
 class Assignment : public NodeData
 {
 public:
-    static Node* create(Node *left, Node *right);
+    static Node* create(Node *left, Node *right, YYLTYPE yyloc);
 
     Assignment(Node *left, Node *right);
     virtual ~Assignment();

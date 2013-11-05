@@ -5,8 +5,8 @@
 namespace sugar {
 namespace ast {
 
-Node* Assignment::create(Node *left, Node *right) {
-    return new Node(Node::eAssignment, new Assignment(left, right));
+Node* Assignment::create(Node *left, Node *right, YYLTYPE yyloc) {
+    return new Node(Node::eAssignment, new Assignment(left, right), yyloc);
 }
 
 Assignment::Assignment(Node *leftArg, Node *rightArg) {

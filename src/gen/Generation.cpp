@@ -3,6 +3,7 @@
 #include "../config_checked.h"
 
 #include <iostream>
+#include "../utils/Getter.tpl.h"
 
 namespace sugar {
 namespace gen {
@@ -76,6 +77,18 @@ std::string Generation::scopeHierarchy() {
         current = current->getParent();
     }
     return result;
+}
+
+llvm::Function* Generation::getInternalFunction(const std::string &name){
+    std::map<const std::string, utils::Getter<llvm::Function*> >::iterator it = _internalFunctions.find(name);
+    if(it == _internalFunctions.end()){
+        return NULL;
+    }
+    return it->second;
+}
+
+void Generation::addInternalFunction(const std::string &name, utils::Getter<llvm::Function*> getter){
+    _internalFunctions.insert(std::make_pair(name, getter));
 }
 
 } // namespace gen

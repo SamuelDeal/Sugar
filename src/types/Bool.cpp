@@ -2,13 +2,16 @@
 
 #include "../parser/parser.hpp"
 #include "../core/Operator.h"
+#include "../ast/Node.h"
 
 
 namespace sugar {
 namespace types {
 
-Bool::Bool()
-{
+Bool::Bool() {
+}
+
+Bool::~Bool() {
 }
 
 void Bool::generate(gen::Generation &gen) const {
@@ -37,20 +40,20 @@ void Bool::generate(gen::Generation &gen) const {
     gen.rootScope.addOperator(op);
 }
 
-llvm::Value* Bool::fnImpl_eq(std::vector<llvm::Value*> values, gen::Generation &gen) {
-    return gen.builder.CreateICmpEQ(values[0], values[1]);
+llvm::Value* Bool::fnImpl_eq(std::vector<ast::Node*> values, gen::Generation &gen) {
+    return gen.builder.CreateICmpEQ(values[0]->getValue(), values[1]->getValue());
 }
 
-llvm::Value* Bool::fnImpl_notEq(std::vector<llvm::Value*> values, gen::Generation &gen) {
-    return gen.builder.CreateICmpNE(values[0], values[1]);
+llvm::Value* Bool::fnImpl_notEq(std::vector<ast::Node*> values, gen::Generation &gen) {
+    return gen.builder.CreateICmpNE(values[0]->getValue(), values[1]->getValue());
 }
 
-llvm::Value* Bool::fnImpl_and(std::vector<llvm::Value*> values, gen::Generation &gen) {
-    return gen.builder.CreateAnd(values[0], values[1]);
+llvm::Value* Bool::fnImpl_and(std::vector<ast::Node*> values, gen::Generation &gen) {
+    return gen.builder.CreateAnd(values[0]->getValue(), values[1]->getValue());
 }
 
-llvm::Value* Bool::fnImpl_or(std::vector<llvm::Value*> values, gen::Generation &gen) {
-    return gen.builder.CreateOr(values[0], values[1]);
+llvm::Value* Bool::fnImpl_or(std::vector<ast::Node*> values, gen::Generation &gen) {
+    return gen.builder.CreateOr(values[0]->getValue(), values[1]->getValue());
 }
 
 } // namespace types

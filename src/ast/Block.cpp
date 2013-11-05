@@ -5,19 +5,27 @@
 namespace sugar {
 namespace ast {
 
-Node* Block::create() {
-    return new Node(Node::eBlock, new Block());
+Node* Block::create(YYLTYPE yyloc) {
+    return new Node(Node::eBlock, new Block(), yyloc);
 }
 
 Block::Block() {
-    isFunction = false;
-    ifCount = 0;
+    stmts = new std::list<Node*>();
 }
 
 Block::~Block() {
-    for(std::list<Node *>::iterator i = stmts.begin(); i != stmts.end(); i++){
+    if(stmts == NULL){
+        return;
+    }
+
+    for(std::list<Node *>::iterator i = stmts->begin(); i != stmts->end(); i++){
        delete (*i);
     }
+    delete stmts;
+}
+
+void Block::clear() {
+    stmts = NULL;
 }
 
 } // namespace ast

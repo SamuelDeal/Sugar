@@ -51,7 +51,7 @@ bool Scope::isVarOwner() const {
 }
 
 void Scope::addFunction(Function *function){
-    _functions.insert(std::pair<std::string, Function*>(function->getName(), function));
+    _functions.insert(std::pair<const std::string, Function*>(function->getName(), function));
 }
 
 void Scope::addOperator(Operator *op){
@@ -59,15 +59,15 @@ void Scope::addOperator(Operator *op){
 }
 
 void Scope::addVar(Variable *var){
-    _variables.insert(std::pair<std::string, Variable*>(var->getName(), var));
+    _variables.insert(std::pair<const std::string, Variable*>(var->getName(), var));
 }
 
 void Scope::addType(Type *type){
-    _types.insert(std::pair<std::string, Type*>(type->getName(), type));
+    _types.insert(std::pair<const std::string, Type*>(type->getName(), type));
 }
 
 std::list<Function*> Scope::getFuncs(const std::string &name) const {
-    typedef std::multimap<std::string, Function*>::const_iterator FuncIt;
+    typedef std::multimap<const std::string, Function*>::const_iterator FuncIt;
 
     std::list<Function *> results;
     std::pair<FuncIt, FuncIt> local = _functions.equal_range(name);
@@ -82,17 +82,19 @@ std::list<Function*> Scope::getFuncs(const std::string &name) const {
     return results;
 }
 
-std::list<Operator*> Scope::getOps(int operatorToken) const {
+std::list<Operator*> Scope::getOps(int operatorToken, bool before) const {
     typedef std::multimap<int, Operator*>::const_iterator OpIt;
 
     std::list<Operator *> results;
     std::pair<OpIt, OpIt> local = _operators.equal_range(operatorToken);
     for(OpIt it = local.first; it != local.second; it++){
-        results.push_back(it->second);
+        if(it->second->getBefore() == before){
+            results.push_back(it->second);
+        }
     }
 
     if(_parent != NULL){
-        std::list<Operator*> previous = _parent->getOps(operatorToken);
+        std::list<Operator*> previous = _parent->getOps(operatorToken, before);
         results.insert(results.end(), previous.begin(), previous.end());
     }
     return results;
@@ -100,7 +102,7 @@ std::list<Operator*> Scope::getOps(int operatorToken) const {
 }
 
 Variable* Scope::getVar(const std::string &name) const {
-    std::map<std::string, Variable *>::const_iterator found = _variables.find(name);
+    std::map<const std::string, Variable *>::const_iterator found = _variables.find(name);
     if(found != _variables.end()){
         return found->second;
     }
@@ -113,7 +115,7 @@ Variable* Scope::getVar(const std::string &name) const {
 }
 
 Type* Scope::getType(const std::string &name) const {
-    std::map<std::string, Type *>::const_iterator found = _types.find(name);
+    std::map<const std::string, Type *>::const_iterator found = _types.find(name);
     if(found != _types.end()){
         return found->second;
     }

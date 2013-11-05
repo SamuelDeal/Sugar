@@ -3,11 +3,11 @@
 namespace sugar {
 namespace ast {
 
-
-NodeData::NodeData() {
+NodeData::NodeData()
+{
 }
 
-NodeData::~NodeData() {
+NodeData::~NodeData(){
 }
 
 } // namespace ast

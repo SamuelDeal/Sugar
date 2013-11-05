@@ -7,6 +7,7 @@
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/ExecutionEngine/JIT.h>
 
+#include "config_checked.h"
 #include "gen/Generator.h"
 #include "gen/GeneratedCode.h"
 #include "parser/BatchParser.h"
@@ -30,7 +31,8 @@ int main(int argc, char **argv) {
         file = stdin;
     }
 
-    ast::Node programStmts(ast::Node::eBlock, new ast::Block());
+    YYLTYPE locStart;
+    ast::Node programStmts(ast::Node::eBlock, new ast::Block(), locStart);
     parser::BatchParser parser;    
     parser.parse(file, programStmts);
 

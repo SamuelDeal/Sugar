@@ -5,8 +5,8 @@
 namespace sugar {
 namespace ast {
 
-Node* FunctionCall::create(Node *ident, bool explicitCall, std::list<Node *> *expressions) {
-    return new Node(Node::eFunctionCall, new FunctionCall(ident, explicitCall, expressions));
+Node* FunctionCall::create(Node *ident, bool explicitCall, std::list<Node *> *expressions, YYLTYPE yyloc) {
+    return new Node(Node::eFunctionCall, new FunctionCall(ident, explicitCall, expressions), yyloc);
 }
 
 FunctionCall::FunctionCall(Node *ident, bool explicitCall, std::list<Node*> *expressions) {
