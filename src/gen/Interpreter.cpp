@@ -179,73 +179,7 @@ void Interpreter::printResult(llvm::Value *value, ast::Node *stmt, Generation &g
     }
 }
 
-Function* Interpreter::generateEchoBoolFunction(Generation &gen) const {
-    std::vector<llvm::Type*> echo_arg_types;
-    echo_arg_types.push_back(gen.boolType);
 
-    llvm::FunctionType* echo_type = llvm::FunctionType::get(gen.voidType, echo_arg_types, false);
-    llvm::Function *func = llvm::Function::Create(
-                echo_type, llvm::Function::InternalLinkage,
-                llvm::Twine("echo_bool"),
-                gen.module
-           );
-    llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
-    const char *trueConstValue;
-#if SHELL_USE_COLOR
-    if(gen.useColor){
-        trueConstValue = "\x1b[32mtrue\x1b[0m\n";
-    }
-    else {
-#endif
-        trueConstValue = "true\n";
-#if SHELL_USE_COLOR
-    }
-#endif
-    llvm::Constant *trueStrConst = llvm::ConstantDataArray::getString(gen.context, trueConstValue);
-    llvm::GlobalVariable *trueVar = new llvm::GlobalVariable(
-            *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
-            strlen(trueConstValue)+1), true, llvm::GlobalValue::PrivateLinkage, trueStrConst, "echo_true_str");
-    std::vector<llvm::Constant*> indicesTrue;
-    indicesTrue.push_back(gen.intZero);
-    indicesTrue.push_back(gen.intZero);
-    llvm::Constant *trueRef = llvm::ConstantExpr::getGetElementPtr(trueVar, indicesTrue);
-
-    const char *falseConstValue;
-#if SHELL_USE_COLOR
-    if(gen.useColor){
-        falseConstValue = "\x1b[32mfalse\x1b[0m\n";
-    }
-    else {
-#endif
-        falseConstValue = "false\n";
-#if SHELL_USE_COLOR
-    }
-#endif
-    llvm::Constant *falseStrConst = llvm::ConstantDataArray::getString(gen.context, falseConstValue);
-    llvm::GlobalVariable *falseVar = new llvm::GlobalVariable(
-            *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
-            strlen(falseConstValue)+1), true, llvm::GlobalValue::PrivateLinkage, falseStrConst, "echo_false_str");
-    std::vector<llvm::Constant*> indicesFalse;
-    indicesFalse.push_back(gen.intZero);
-    indicesFalse.push_back(gen.intZero);
-    llvm::Constant *falseRef = llvm::ConstantExpr::getGetElementPtr(falseVar, indicesFalse);
-
-    llvm::Function::arg_iterator argsValues = func->arg_begin();
-    llvm::Value* toPrint = argsValues++;
-    toPrint->setName("toPrint");
-
-    llvm::ICmpInst* testResult = new llvm::ICmpInst(*bblock, llvm::ICmpInst::ICMP_NE, toPrint, gen.falseConst, "");
-    llvm::SelectInst* displayed = llvm::SelectInst::Create(testResult, trueRef, falseRef, "", bblock);
-
-    std::vector<llvm::Value*> args;
-    args.push_back(displayed);
-    llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
-    llvm::ReturnInst::Create(gen.context, bblock);
-
-    std::list<const Type *> types;
-    types.push_back(&gen.boolType);
-    return new Function("echo", func, &gen.voidType, types);
-}
 
 void Interpreter::initCore(Generation &gen) const {
     Generator::initCore(gen);
@@ -255,275 +189,366 @@ void Interpreter::initCore(Generation &gen) const {
     gen.rootScope.addFunction(generateEchoFloatResultFunction(gen));
 }
 
+Function* Interpreter::generateEchoBoolFunction(Generation &gen) const {
+    std::list<const Type *> types;
+    types.push_back(&gen.boolType);
+
+    Function *fn = new Function("echo", &gen.voidType, types, [&] {
+
+        std::vector<llvm::Type*> echo_arg_types;
+        echo_arg_types.push_back(gen.boolType);
+
+        llvm::FunctionType* echo_type = llvm::FunctionType::get(gen.voidType, echo_arg_types, false);
+        llvm::Function *func = llvm::Function::Create(
+                    echo_type, llvm::Function::InternalLinkage,
+                    llvm::Twine("echo_bool"),
+                    gen.module
+               );
+        llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
+        const char *trueConstValue;
+    #if SHELL_USE_COLOR
+        if(gen.useColor){
+            trueConstValue = "\x1b[32mtrue\x1b[0m\n";
+        }
+        else {
+    #endif
+            trueConstValue = "true\n";
+    #if SHELL_USE_COLOR
+        }
+    #endif
+        llvm::Constant *trueStrConst = llvm::ConstantDataArray::getString(gen.context, trueConstValue);
+        llvm::GlobalVariable *trueVar = new llvm::GlobalVariable(
+                *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
+                strlen(trueConstValue)+1), true, llvm::GlobalValue::PrivateLinkage, trueStrConst, "echo_true_str");
+        std::vector<llvm::Constant*> indicesTrue;
+        indicesTrue.push_back(gen.intZero);
+        indicesTrue.push_back(gen.intZero);
+        llvm::Constant *trueRef = llvm::ConstantExpr::getGetElementPtr(trueVar, indicesTrue);
+
+        const char *falseConstValue;
+    #if SHELL_USE_COLOR
+        if(gen.useColor){
+            falseConstValue = "\x1b[32mfalse\x1b[0m\n";
+        }
+        else {
+    #endif
+            falseConstValue = "false\n";
+    #if SHELL_USE_COLOR
+        }
+    #endif
+        llvm::Constant *falseStrConst = llvm::ConstantDataArray::getString(gen.context, falseConstValue);
+        llvm::GlobalVariable *falseVar = new llvm::GlobalVariable(
+                *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
+                strlen(falseConstValue)+1), true, llvm::GlobalValue::PrivateLinkage, falseStrConst, "echo_false_str");
+        std::vector<llvm::Constant*> indicesFalse;
+        indicesFalse.push_back(gen.intZero);
+        indicesFalse.push_back(gen.intZero);
+        llvm::Constant *falseRef = llvm::ConstantExpr::getGetElementPtr(falseVar, indicesFalse);
+
+        llvm::Function::arg_iterator argsValues = func->arg_begin();
+        llvm::Value* toPrint = argsValues++;
+        toPrint->setName("toPrint");
+
+        llvm::ICmpInst* testResult = new llvm::ICmpInst(*bblock, llvm::ICmpInst::ICMP_NE, toPrint, gen.falseConst, "");
+        llvm::SelectInst* displayed = llvm::SelectInst::Create(testResult, trueRef, falseRef, "", bblock);
+
+        std::vector<llvm::Value*> args;
+        args.push_back(displayed);
+        llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
+        llvm::ReturnInst::Create(gen.context, bblock);
+
+        return func;
+    });
+    return fn;
+}
+
 Function* Interpreter::generateEchoIntFunction(Generation &gen) const {
-    std::vector<llvm::Type*> echo_arg_types;
-    echo_arg_types.push_back(gen.intType);
-
-    llvm::FunctionType* echo_type = llvm::FunctionType::get(gen.voidType, echo_arg_types, false);
-
-    llvm::Function *func = llvm::Function::Create(
-                echo_type, llvm::Function::InternalLinkage,
-                llvm::Twine("echo_int"),
-                gen.module
-           );
-    llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
-
-    const char *constValue;
-#if SHELL_USE_COLOR
-    if(gen.useColor){
-        constValue = "\x1b[32m%lld\n\x1b[0m\n";
-    }
-    else {
-#endif
-        constValue = "%lld\n";
-#if SHELL_USE_COLOR
-    }
-#endif
-    llvm::Constant *format_const = llvm::ConstantDataArray::getString(gen.context, constValue);
-    llvm::GlobalVariable *var = new llvm::GlobalVariable(
-            *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
-            strlen(constValue)+1), true, llvm::GlobalValue::PrivateLinkage, format_const, "echo_int_format");
-
-    std::vector<llvm::Constant*> indices;
-    indices.push_back(gen.intZero);
-    indices.push_back(gen.intZero);
-    llvm::Constant *var_ref = llvm::ConstantExpr::getGetElementPtr(var, indices);
-
-    std::vector<llvm::Value*> args;
-    args.push_back(var_ref);
-
-    llvm::Function::arg_iterator argsValues = func->arg_begin();
-    llvm::Value* toPrint = argsValues++;
-    toPrint->setName("toPrint");
-    args.push_back(toPrint);
-
-    llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
-    llvm::ReturnInst::Create(gen.context, bblock);
-
     std::list<const Type *> types;
     types.push_back(&gen.intType);
-    return new Function("echo", func, &gen.voidType, types);
+
+    Function *fn = new Function("echo", &gen.voidType, types, [&] {
+        std::vector<llvm::Type*> echo_arg_types;
+        echo_arg_types.push_back(gen.intType);
+
+        llvm::FunctionType* echo_type = llvm::FunctionType::get(gen.voidType, echo_arg_types, false);
+
+        llvm::Function *func = llvm::Function::Create(
+                    echo_type, llvm::Function::InternalLinkage,
+                    llvm::Twine("echo_int"),
+                    gen.module
+               );
+        llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
+
+        const char *constValue;
+    #if SHELL_USE_COLOR
+        if(gen.useColor){
+            constValue = "\x1b[32m%lld\n\x1b[0m\n";
+        }
+        else {
+    #endif
+            constValue = "%lld\n";
+    #if SHELL_USE_COLOR
+        }
+    #endif
+        llvm::Constant *format_const = llvm::ConstantDataArray::getString(gen.context, constValue);
+        llvm::GlobalVariable *var = new llvm::GlobalVariable(
+                *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
+                strlen(constValue)+1), true, llvm::GlobalValue::PrivateLinkage, format_const, "echo_int_format");
+
+        std::vector<llvm::Constant*> indices;
+        indices.push_back(gen.intZero);
+        indices.push_back(gen.intZero);
+        llvm::Constant *var_ref = llvm::ConstantExpr::getGetElementPtr(var, indices);
+
+        std::vector<llvm::Value*> args;
+        args.push_back(var_ref);
+
+        llvm::Function::arg_iterator argsValues = func->arg_begin();
+        llvm::Value* toPrint = argsValues++;
+        toPrint->setName("toPrint");
+        args.push_back(toPrint);
+
+        llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
+        llvm::ReturnInst::Create(gen.context, bblock);
+
+        return func;
+    });
+    return fn;
 }
 
 Function* Interpreter::generateEchoFloatFunction(Generation &gen) const {
-    std::vector<llvm::Type*> echo_arg_types;
-    echo_arg_types.push_back(gen.floatType);
-
-    llvm::FunctionType* echo_type = llvm::FunctionType::get(gen.voidType, echo_arg_types, false);
-
-    llvm::Function *func = llvm::Function::Create(
-                echo_type, llvm::Function::InternalLinkage,
-                llvm::Twine("echo_double"),
-                gen.module
-           );
-    llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
-
-    const char *constValue;
-#if SHELL_USE_COLOR
-    if(gen.useColor){
-        constValue = "\x1b[32m%f\n\x1b[0m\n";
-    }
-    else {
-#endif
-        constValue = "%f\n";
-#if SHELL_USE_COLOR
-    }
-#endif
-    llvm::Constant *format_const = llvm::ConstantDataArray::getString(gen.context, constValue);
-    llvm::GlobalVariable *var = new llvm::GlobalVariable(
-            *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
-            strlen(constValue)+1), true, llvm::GlobalValue::PrivateLinkage, format_const, "echo_double_format");
-
-    std::vector<llvm::Constant*> indices;
-    indices.push_back(gen.intZero);
-    indices.push_back(gen.intZero);
-    llvm::Constant *var_ref = llvm::ConstantExpr::getGetElementPtr(var, indices);
-
-    std::vector<llvm::Value*> args;
-    args.push_back(var_ref);
-
-    llvm::Function::arg_iterator argsValues = func->arg_begin();
-    llvm::Value* toPrint = argsValues++;
-    toPrint->setName("toPrint");
-    args.push_back(toPrint);
-
-    llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
-    llvm::ReturnInst::Create(gen.context, bblock);
-    //context.popBlock();
-
     std::list<const Type *> types;
     types.push_back(&gen.floatType);
-    return new Function("echo", func, &gen.voidType, types);
+
+    Function *fn = new Function("echo", &gen.voidType, types, [&] {
+        std::vector<llvm::Type*> echo_arg_types;
+        echo_arg_types.push_back(gen.floatType);
+
+        llvm::FunctionType* echo_type = llvm::FunctionType::get(gen.voidType, echo_arg_types, false);
+
+        llvm::Function *func = llvm::Function::Create(
+                    echo_type, llvm::Function::InternalLinkage,
+                    llvm::Twine("echo_double"),
+                    gen.module
+               );
+        llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
+
+        const char *constValue;
+    #if SHELL_USE_COLOR
+        if(gen.useColor){
+            constValue = "\x1b[32m%f\n\x1b[0m\n";
+        }
+        else {
+    #endif
+            constValue = "%f\n";
+    #if SHELL_USE_COLOR
+        }
+    #endif
+        llvm::Constant *format_const = llvm::ConstantDataArray::getString(gen.context, constValue);
+        llvm::GlobalVariable *var = new llvm::GlobalVariable(
+                *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
+                strlen(constValue)+1), true, llvm::GlobalValue::PrivateLinkage, format_const, "echo_double_format");
+
+        std::vector<llvm::Constant*> indices;
+        indices.push_back(gen.intZero);
+        indices.push_back(gen.intZero);
+        llvm::Constant *var_ref = llvm::ConstantExpr::getGetElementPtr(var, indices);
+
+        std::vector<llvm::Value*> args;
+        args.push_back(var_ref);
+
+        llvm::Function::arg_iterator argsValues = func->arg_begin();
+        llvm::Value* toPrint = argsValues++;
+        toPrint->setName("toPrint");
+        args.push_back(toPrint);
+
+        llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
+        llvm::ReturnInst::Create(gen.context, bblock);
+
+        return func;
+    });
+    return fn;
 }
 
 Function* Interpreter::generateEchoBoolResultFunction(Generation &gen) const {
-    std::vector<llvm::Type*> echo_arg_types;
-    echo_arg_types.push_back(gen.boolType);
-
-    llvm::FunctionType* echo_type = llvm::FunctionType::get(gen.voidType, echo_arg_types, false);
-    llvm::Function *func = llvm::Function::Create(
-                echo_type, llvm::Function::InternalLinkage,
-                llvm::Twine("_ _echo_bool_result"),
-                gen.module
-           );
-    llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
-
-    const char *trueConstValue;
-#if SHELL_USE_COLOR
-    if(gen.useColor){
-        trueConstValue = "\x1b[33m=> true\n\x1b[0m\n";
-    }
-    else {
-#endif
-        trueConstValue = "=> true\n";
-#if SHELL_USE_COLOR
-    }
-#endif
-    llvm::Constant *trueStrConst = llvm::ConstantDataArray::getString(gen.context, trueConstValue);
-    llvm::GlobalVariable *trueVar = new llvm::GlobalVariable(
-            *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
-            strlen(trueConstValue)+1), true, llvm::GlobalValue::PrivateLinkage, trueStrConst, "echo_true_str");
-    std::vector<llvm::Constant*> indicesTrue;
-    indicesTrue.push_back(gen.intZero);
-    indicesTrue.push_back(gen.intZero);
-    llvm::Constant *trueRef = llvm::ConstantExpr::getGetElementPtr(trueVar, indicesTrue);
-
-    const char *falseConstValue;
-#if SHELL_USE_COLOR
-    if(gen.useColor){
-        falseConstValue = "\x1b[33m=> false\n\x1b[0m\n";
-    }
-    else {
-#endif
-        falseConstValue = "=> false\n";
-#if SHELL_USE_COLOR
-    }
-#endif
-    llvm::Constant *falseStrConst = llvm::ConstantDataArray::getString(gen.context, falseConstValue);
-    llvm::GlobalVariable *falseVar = new llvm::GlobalVariable(
-            *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
-            strlen(falseConstValue)+1), true, llvm::GlobalValue::PrivateLinkage, falseStrConst, "echo_false_str");
-    std::vector<llvm::Constant*> indicesFalse;
-    indicesFalse.push_back(gen.intZero);
-    indicesFalse.push_back(gen.intZero);
-    llvm::Constant *falseRef = llvm::ConstantExpr::getGetElementPtr(falseVar, indicesFalse);
-
-    llvm::Function::arg_iterator argsValues = func->arg_begin();
-    llvm::Value* toPrint = argsValues++;
-    toPrint->setName("toPrint");
-
-    llvm::ICmpInst* testResult = new llvm::ICmpInst(*bblock, llvm::ICmpInst::ICMP_NE, toPrint, gen.falseConst, "");
-    llvm::SelectInst* displayed = llvm::SelectInst::Create(testResult, trueRef, falseRef, "", bblock);
-
-    std::vector<llvm::Value*> args;
-    args.push_back(displayed);
-    llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
-    llvm::ReturnInst::Create(gen.context, bblock);
-
     std::list<const Type *> types;
     types.push_back(&gen.boolType);
-    return new Function("_ _echo_result", func, &gen.voidType, types);
+
+    Function *fn = new Function("_ _echo_result", &gen.voidType, types, [&] {
+        std::vector<llvm::Type*> echo_arg_types;
+        echo_arg_types.push_back(gen.boolType);
+
+        llvm::FunctionType* echo_type = llvm::FunctionType::get(gen.voidType, echo_arg_types, false);
+        llvm::Function *func = llvm::Function::Create(
+                    echo_type, llvm::Function::InternalLinkage,
+                    llvm::Twine("_ _echo_bool_result"),
+                    gen.module
+               );
+        llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
+
+        const char *trueConstValue;
+    #if SHELL_USE_COLOR
+        if(gen.useColor){
+            trueConstValue = "\x1b[33m=> true\n\x1b[0m\n";
+        }
+        else {
+    #endif
+            trueConstValue = "=> true\n";
+    #if SHELL_USE_COLOR
+        }
+    #endif
+        llvm::Constant *trueStrConst = llvm::ConstantDataArray::getString(gen.context, trueConstValue);
+        llvm::GlobalVariable *trueVar = new llvm::GlobalVariable(
+                *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
+                strlen(trueConstValue)+1), true, llvm::GlobalValue::PrivateLinkage, trueStrConst, "echo_true_str");
+        std::vector<llvm::Constant*> indicesTrue;
+        indicesTrue.push_back(gen.intZero);
+        indicesTrue.push_back(gen.intZero);
+        llvm::Constant *trueRef = llvm::ConstantExpr::getGetElementPtr(trueVar, indicesTrue);
+
+        const char *falseConstValue;
+    #if SHELL_USE_COLOR
+        if(gen.useColor){
+            falseConstValue = "\x1b[33m=> false\n\x1b[0m\n";
+        }
+        else {
+    #endif
+            falseConstValue = "=> false\n";
+    #if SHELL_USE_COLOR
+        }
+    #endif
+        llvm::Constant *falseStrConst = llvm::ConstantDataArray::getString(gen.context, falseConstValue);
+        llvm::GlobalVariable *falseVar = new llvm::GlobalVariable(
+                *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
+                strlen(falseConstValue)+1), true, llvm::GlobalValue::PrivateLinkage, falseStrConst, "echo_false_str");
+        std::vector<llvm::Constant*> indicesFalse;
+        indicesFalse.push_back(gen.intZero);
+        indicesFalse.push_back(gen.intZero);
+        llvm::Constant *falseRef = llvm::ConstantExpr::getGetElementPtr(falseVar, indicesFalse);
+
+        llvm::Function::arg_iterator argsValues = func->arg_begin();
+        llvm::Value* toPrint = argsValues++;
+        toPrint->setName("toPrint");
+
+        llvm::ICmpInst* testResult = new llvm::ICmpInst(*bblock, llvm::ICmpInst::ICMP_NE, toPrint, gen.falseConst, "");
+        llvm::SelectInst* displayed = llvm::SelectInst::Create(testResult, trueRef, falseRef, "", bblock);
+
+        std::vector<llvm::Value*> args;
+        args.push_back(displayed);
+        llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
+        llvm::ReturnInst::Create(gen.context, bblock);
+
+        return func;
+    });
+    return fn;
 }
 
 Function* Interpreter::generateEchoIntResultFunction(Generation &gen) const {
-    std::vector<llvm::Type*> echo_arg_types;
-    echo_arg_types.push_back(gen.intType);
-
-    llvm::FunctionType* echo_type = llvm::FunctionType::get(gen.voidType, echo_arg_types, false);
-
-    llvm::Function *func = llvm::Function::Create(
-                echo_type, llvm::Function::InternalLinkage,
-                llvm::Twine("_ _echo_int"),
-                gen.module
-           );
-    llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
-
-    const char *constValue;
-#if SHELL_USE_COLOR
-    if(gen.useColor){
-        constValue = "\x1b[33m=> %lld\n\x1b[0m\n";
-    }
-    else {
-#endif
-        constValue = "=> %lld\n";
-#if SHELL_USE_COLOR
-    }
-#endif
-    llvm::Constant *format_const = llvm::ConstantDataArray::getString(gen.context, constValue);
-    llvm::GlobalVariable *var = new llvm::GlobalVariable(
-            *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
-            strlen(constValue)+1), true, llvm::GlobalValue::PrivateLinkage, format_const, "echo_int_format");
-
-    std::vector<llvm::Constant*> indices;
-    indices.push_back(gen.intZero);
-    indices.push_back(gen.intZero);
-    llvm::Constant *var_ref = llvm::ConstantExpr::getGetElementPtr(var, indices);
-
-    std::vector<llvm::Value*> args;
-    args.push_back(var_ref);
-
-    llvm::Function::arg_iterator argsValues = func->arg_begin();
-    llvm::Value* toPrint = argsValues++;
-    toPrint->setName("toPrint");
-    args.push_back(toPrint);
-
-    llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
-    llvm::ReturnInst::Create(gen.context, bblock);
-
     std::list<const Type *> types;
     types.push_back(&gen.intType);
-    return new Function("_ _echo_result", func, &gen.voidType, types);
+
+    Function *fn = new Function("_ _echo_result", &gen.voidType, types, [&] {
+        std::vector<llvm::Type*> echo_arg_types;
+        echo_arg_types.push_back(gen.intType);
+
+        llvm::FunctionType* echo_type = llvm::FunctionType::get(gen.voidType, echo_arg_types, false);
+
+        llvm::Function *func = llvm::Function::Create(
+                    echo_type, llvm::Function::InternalLinkage,
+                    llvm::Twine("_ _echo_int"),
+                    gen.module
+               );
+        llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
+
+        const char *constValue;
+    #if SHELL_USE_COLOR
+        if(gen.useColor){
+            constValue = "\x1b[33m=> %lld\n\x1b[0m\n";
+        }
+        else {
+    #endif
+            constValue = "=> %lld\n";
+    #if SHELL_USE_COLOR
+        }
+    #endif
+        llvm::Constant *format_const = llvm::ConstantDataArray::getString(gen.context, constValue);
+        llvm::GlobalVariable *var = new llvm::GlobalVariable(
+                *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
+                strlen(constValue)+1), true, llvm::GlobalValue::PrivateLinkage, format_const, "echo_int_format");
+
+        std::vector<llvm::Constant*> indices;
+        indices.push_back(gen.intZero);
+        indices.push_back(gen.intZero);
+        llvm::Constant *var_ref = llvm::ConstantExpr::getGetElementPtr(var, indices);
+
+        std::vector<llvm::Value*> args;
+        args.push_back(var_ref);
+
+        llvm::Function::arg_iterator argsValues = func->arg_begin();
+        llvm::Value* toPrint = argsValues++;
+        toPrint->setName("toPrint");
+        args.push_back(toPrint);
+
+        llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
+        llvm::ReturnInst::Create(gen.context, bblock);
+
+        return func;
+    });
+    return fn;
 }
 
 Function* Interpreter::generateEchoFloatResultFunction(Generation &gen) const {
-    std::vector<llvm::Type*> echo_arg_types;
-    echo_arg_types.push_back(gen.floatType);
-
-    llvm::FunctionType* echo_type = llvm::FunctionType::get(gen.voidType, echo_arg_types, false);
-
-    llvm::Function *func = llvm::Function::Create(
-                echo_type, llvm::Function::InternalLinkage,
-                llvm::Twine("_ _echo_double_result"),
-                gen.module
-           );
-    llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
-
-    const char *constValue;
-#if SHELL_USE_COLOR
-    if(gen.useColor){
-        constValue = "\x1b[33m=> %f\n\x1b[0m\n";
-    }
-    else {
-#endif
-        constValue = "=> %f\n";
-#if SHELL_USE_COLOR
-    }
-#endif
-    llvm::Constant *format_const = llvm::ConstantDataArray::getString(gen.context, constValue);
-    llvm::GlobalVariable *var = new llvm::GlobalVariable(
-            *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
-            strlen(constValue)+1), true, llvm::GlobalValue::PrivateLinkage, format_const, "echo_double_format");
-
-    std::vector<llvm::Constant*> indices;
-    indices.push_back(gen.intZero);
-    indices.push_back(gen.intZero);
-    llvm::Constant *var_ref = llvm::ConstantExpr::getGetElementPtr(var, indices);
-
-    std::vector<llvm::Value*> args;
-    args.push_back(var_ref);
-
-    llvm::Function::arg_iterator argsValues = func->arg_begin();
-    llvm::Value* toPrint = argsValues++;
-    toPrint->setName("toPrint");
-    args.push_back(toPrint);
-
-    llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
-    llvm::ReturnInst::Create(gen.context, bblock);
-    //context.popBlock();
-
     std::list<const Type *> types;
     types.push_back(&gen.floatType);
-    return new Function("_ _echo_result", func, &gen.voidType, types);
+
+    Function *fn = new Function("_ _echo_result", &gen.voidType, types, [&] {
+        std::vector<llvm::Type*> echo_arg_types;
+        echo_arg_types.push_back(gen.floatType);
+
+        llvm::FunctionType* echo_type = llvm::FunctionType::get(gen.voidType, echo_arg_types, false);
+
+        llvm::Function *func = llvm::Function::Create(
+                    echo_type, llvm::Function::InternalLinkage,
+                    llvm::Twine("_ _echo_double_result"),
+                    gen.module
+               );
+        llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
+
+        const char *constValue;
+    #if SHELL_USE_COLOR
+        if(gen.useColor){
+            constValue = "\x1b[33m=> %f\n\x1b[0m\n";
+        }
+        else {
+    #endif
+            constValue = "=> %f\n";
+    #if SHELL_USE_COLOR
+        }
+    #endif
+        llvm::Constant *format_const = llvm::ConstantDataArray::getString(gen.context, constValue);
+        llvm::GlobalVariable *var = new llvm::GlobalVariable(
+                *gen.module, llvm::ArrayType::get(llvm::IntegerType::get(gen.context, 8),
+                strlen(constValue)+1), true, llvm::GlobalValue::PrivateLinkage, format_const, "echo_double_format");
+
+        std::vector<llvm::Constant*> indices;
+        indices.push_back(gen.intZero);
+        indices.push_back(gen.intZero);
+        llvm::Constant *var_ref = llvm::ConstantExpr::getGetElementPtr(var, indices);
+
+        std::vector<llvm::Value*> args;
+        args.push_back(var_ref);
+
+        llvm::Function::arg_iterator argsValues = func->arg_begin();
+        llvm::Value* toPrint = argsValues++;
+        toPrint->setName("toPrint");
+        args.push_back(toPrint);
+
+        llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
+        llvm::ReturnInst::Create(gen.context, bblock);
+
+        return func;
+    });
+    return fn;
 }
 
 } // namespace gen
