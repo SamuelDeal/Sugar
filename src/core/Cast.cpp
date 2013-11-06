@@ -9,8 +9,15 @@ std::list<const Type *> createList(Type* fromType) {
     return result;
 }
 
-Cast::Cast(llvm::Function *fn, Type* fromType, Type* toType):
-    AbstractFunction(fn, toType, createList(fromType))
+Cast::Cast(Type* fromType, Type* toType,
+                   std::function<llvm::Function * ()> fnDeclGenerator,
+                   std::function<void (llvm::Function*)> fnImplGenerator):
+    AbstractFunction(fnDeclGenerator, fnImplGenerator, toType, createList(fromType))
+{}
+
+Cast::Cast(Type* fromType, Type* toType, ast::Node *fnDeclNode,
+                   std::function<llvm::Function * ()> fnDeclGenerator):
+    AbstractFunction(fnDeclGenerator, fnDeclNode, toType, createList(fromType))
 {}
 
 Cast::Cast(NativeFunction fn, Type* fromType, Type* toType):

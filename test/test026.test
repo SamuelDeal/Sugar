@@ -1,0 +1,4 @@
+echo do_math(6)
+
+Int do_math(Int y)
+    y + 1 

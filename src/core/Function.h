@@ -10,8 +10,11 @@ namespace core {
 class Function : public AbstractFunction
 {
 public:
-    Function(const std::string &name, llvm::Function *function, Type* returnType, const std::list<const Type *> &argTypes);
-    Function(const std::string &name, Type* returnType, const std::list<const Type *> &argTypes, std::function<llvm::Function *()> generator);
+    Function(const std::string &name, Type* returnType, const std::list<const Type *> &argTypes,
+                       std::function<llvm::Function * ()> fnDeclGenerator,
+                       std::function<void (llvm::Function*)> fnImplGenerator);
+    Function(const std::string &name, Type* returnType, const std::list<const Type *> &argTypes, ast::Node *fnDeclNode,
+                       std::function<llvm::Function * ()> fnDeclGenerator);
     Function(const std::string &name, NativeFunction fn, Type* returnType, const std::list<const Type *> &argTypes);
 
     virtual ~Function();

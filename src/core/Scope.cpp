@@ -52,6 +52,10 @@ bool Scope::isVarOwner() const {
 
 void Scope::addFunction(Function *function){
     _functions.insert(std::pair<const std::string, Function*>(function->getName(), function));
+    ast::Node *decl = function->getDeclaration();
+    if(decl != NULL){
+        _functionDeclarations.insert(std::make_pair(decl, function));
+    }
 }
 
 void Scope::addOperator(Operator *op){
@@ -163,6 +167,19 @@ void Scope::setReturnReach(){
 
 bool Scope::isReturnReach() {
     return _returnReach;
+}
+
+Function* Scope::getByDeclarationNode(ast::Node* funcDecl){
+    std::map<ast::Node*, Function*>::const_iterator found = _functionDeclarations.find(funcDecl);
+    if(found != _functionDeclarations.end()){
+        return found->second;
+    }
+    else if(_parent != NULL){
+        return _parent->getByDeclarationNode(funcDecl);
+    }
+    else{
+        return NULL;
+    }
 }
 
 } // namespace core

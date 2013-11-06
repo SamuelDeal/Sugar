@@ -33,8 +33,11 @@ typedef llvm::Value* (*NativeFunction)(std::vector<ast::Node*>, gen::Generation 
 class AbstractFunction
 {
 public:
-    AbstractFunction(llvm::Function* function, Type* returnType, const std::list<const Type *> &argTypes);
-    AbstractFunction(std::function<llvm::Function * ()> generator, Type* returnType, const std::list<const Type *> &argTypes);
+    AbstractFunction(std::function<llvm::Function * ()> fnDeclGenerator,
+                     std::function<void (llvm::Function*)> fnImplGenerator,
+                     Type* returnType, const std::list<const Type *> &argTypes);
+    AbstractFunction(std::function<llvm::Function * ()> fnDeclGenerator, ast::Node *funcDecl,
+                     Type* returnType, const std::list<const Type *> &argTypes);
     AbstractFunction(NativeFunction fn, Type* returnType, const std::list<const Type *> &argTypes);
 
     virtual ~AbstractFunction();
@@ -45,18 +48,27 @@ public:
     NativeFunction getNative() const;
     const Type* getReturnType() const;
     operator llvm::Function*();
+    void setImplementationGenerator(std::function<void (llvm::Function*)> generator);
+    ast::Node *getDeclaration() const;
 
 protected:
+    bool isUsed() const;
+
     const Type *_returnType;
     std::list<const Type *> _argsTypes;
     std::list<Type *> _argsNames;
     std::list<bool> _argsHasDefaultValue;
-    std::function<llvm::Function* ()> _generator;
+
 
     bool _native;
-    union {
-        llvm::Function *llvmFunction;
+    struct {
         NativeFunction nativeFunction;
+        struct {
+            llvm::Function *llvmFunction;
+            std::function<llvm::Function* ()> fnDeclGenerator;
+            std::function<void (llvm::Function*)> fnImplGenerator;
+            ast::Node *funcDeclNode;
+        } irFunction;
     } _impl;
 };
 

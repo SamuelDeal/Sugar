@@ -5,14 +5,17 @@ namespace sugar {
 namespace core {
 
 
-Function::Function(const std::string &name, llvm::Function* function, Type* returnType, const std::list<const Type *> &argTypes):
-     AbstractFunction(function, returnType, argTypes)
+Function::Function(const std::string &name, Type* returnType, const std::list<const Type *> &argTypes,
+                   std::function<llvm::Function * ()> fnDeclGenerator,
+                   std::function<void (llvm::Function*)> fnImplGenerator):
+    AbstractFunction(fnDeclGenerator, fnImplGenerator, returnType, argTypes)
 {
     _name = name;
 }
 
-Function::Function(const std::string &name, Type* returnType, const std::list<const Type *> &argTypes, std::function<llvm::Function* ()> generator):
-    AbstractFunction(generator, returnType, argTypes)
+Function::Function(const std::string &name, Type* returnType, const std::list<const Type *> &argTypes, ast::Node *fnDeclNode,
+                   std::function<llvm::Function * ()> fnDeclGenerator):
+    AbstractFunction(fnDeclGenerator, fnDeclNode, returnType, argTypes)
 {
     _name = name;
 }

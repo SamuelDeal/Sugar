@@ -10,6 +10,11 @@ namespace llvm {
 }
 
 namespace sugar {
+namespace ast {
+    class Node;
+}
+
+
 namespace core {
 
 class Function;
@@ -56,12 +61,14 @@ public:
     void replaceBlock(llvm::BasicBlock *block);
     void setReturnReach();
     bool isReturnReach();
+    Function* getByDeclarationNode(ast::Node*);
 
 protected:
     std::multimap<const std::string, Function*> _functions;
     std::multimap<int, Operator*> _operators;
     std::map<const std::string, Variable *> _variables;
     std::map<const std::string, Type *> _types;
+    std::map<ast::Node*, Function*> _functionDeclarations;
     Scope *_parent;
     llvm::BasicBlock *_block;
     unsigned int _type;

@@ -193,7 +193,7 @@ Function* Interpreter::generateEchoBoolFunction(Generation &gen) const {
     std::list<const Type *> types;
     types.push_back(&gen.boolType);
 
-    Function *fn = new Function("echo", &gen.voidType, types, [&] {
+    Function *fn = new Function("echo", &gen.voidType, types, [=, &gen] {
 
         std::vector<llvm::Type*> echo_arg_types;
         echo_arg_types.push_back(gen.boolType);
@@ -204,6 +204,8 @@ Function* Interpreter::generateEchoBoolFunction(Generation &gen) const {
                     llvm::Twine("echo_bool"),
                     gen.module
                );
+        return func;
+    },[=, &gen] (llvm::Function *func){
         llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
         const char *trueConstValue;
     #if SHELL_USE_COLOR
@@ -256,8 +258,6 @@ Function* Interpreter::generateEchoBoolFunction(Generation &gen) const {
         args.push_back(displayed);
         llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
         llvm::ReturnInst::Create(gen.context, bblock);
-
-        return func;
     });
     return fn;
 }
@@ -277,6 +277,8 @@ Function* Interpreter::generateEchoIntFunction(Generation &gen) const {
                     llvm::Twine("echo_int"),
                     gen.module
                );
+        return func;
+    },[=, &gen] (llvm::Function *func){
         llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
 
         const char *constValue;
@@ -331,6 +333,8 @@ Function* Interpreter::generateEchoFloatFunction(Generation &gen) const {
                     llvm::Twine("echo_double"),
                     gen.module
                );
+        return func;
+    },[=, &gen] (llvm::Function *func){
         llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
 
         const char *constValue;
@@ -384,6 +388,8 @@ Function* Interpreter::generateEchoBoolResultFunction(Generation &gen) const {
                     llvm::Twine("_ _echo_bool_result"),
                     gen.module
                );
+        return func;
+    },[=, &gen] (llvm::Function *func){
         llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
 
         const char *trueConstValue;
@@ -458,6 +464,8 @@ Function* Interpreter::generateEchoIntResultFunction(Generation &gen) const {
                     llvm::Twine("_ _echo_int"),
                     gen.module
                );
+        return func;
+    },[=, &gen] (llvm::Function *func){
         llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
 
         const char *constValue;
@@ -512,6 +520,8 @@ Function* Interpreter::generateEchoFloatResultFunction(Generation &gen) const {
                     llvm::Twine("_ _echo_double_result"),
                     gen.module
                );
+        return func;
+    },[=, &gen] (llvm::Function *func){
         llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
 
         const char *constValue;
