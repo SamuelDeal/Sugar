@@ -5,8 +5,8 @@
 namespace sugar {
 namespace parser {
 
-LexerContext::LexerContext(ast::Node *programStmtsArg,
-                            bool interactiveArg, stmtFunction callback)
+LexerContext::LexerContext(ast::Node *programStmtsArg, const std::string &filenameArg,
+                           bool interactiveArg, stmtFunction callback): filename(filenameArg)
 {
     interactive = interactiveArg;
     programStmts = programStmtsArg;

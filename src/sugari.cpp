@@ -40,8 +40,10 @@ void onMainStatement(ast::Node *programStmts, ast::Node *newStmt) {
 
 int main(int argc, char **argv) {
     FILE *file;
+    std::string filename;
     if(argc > 1){
         file = fopen(argv[1],"r");
+        filename = argv[1];
         if(file == NULL){
             std::cout << "Unable to open " << argv[1] << std::endl;
             return 1;
@@ -64,7 +66,7 @@ int main(int argc, char **argv) {
 #endif
 
     parser::InteractiveParser parser;
-    parser.parse(file, *programStmts, onMainStatement);
+    parser.parse(file, filename, *programStmts, onMainStatement);
 
     delete programStmts;
     return 0;

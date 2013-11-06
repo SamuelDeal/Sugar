@@ -168,7 +168,6 @@ HEADERS += \
     src/ast/ArgumentDeclaration.h \
     src/gen/pass/FunctionLookupPass.h \
     src/ast/FunctionImplementation.h \
-    src/gen/NodeResult.h \
     src/core/LanguageError.h \
     src/ast/NodeData.h \
     src/utils/Getter.h \

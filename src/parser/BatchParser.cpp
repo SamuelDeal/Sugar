@@ -17,14 +17,14 @@ void BatchParser_onProgramStmt(ast::Node *programStmts, ast::Node *newStmt){
     ((ast::Block *)(programStmts->data))->stmts->push_back(newStmt);
 }
 
-void BatchParser::parse(FILE *file, ast::Node &programStmts) const {
+void BatchParser::parse(FILE *file, const std::string& filename, ast::Node &programStmts) const {
     yydebug = DEBUG_PARSER;
 
     yyscan_t scanner;
     yylex_init(&scanner);
     yyset_debug(DEBUG_LEXER, scanner);
 
-    LexerContext lexerCtx(&programStmts, false, BatchParser_onProgramStmt);
+    LexerContext lexerCtx(&programStmts, filename, false, BatchParser_onProgramStmt);
     yylex_init_extra(&lexerCtx, &scanner);
     lexerCtx.scanner = scanner;
 

@@ -162,7 +162,7 @@ InteractiveParser::InteractiveParser()
 {
 }
 
-void InteractiveParser::parse(FILE *file, ast::Node &programStmts, stmtFunction callback) const {
+void InteractiveParser::parse(FILE *file, const std::string &filename, ast::Node &programStmts, stmtFunction callback) const {
     yydebug = DEBUG_PARSER;
 
     yyscan_t scanner;
@@ -174,7 +174,7 @@ void InteractiveParser::parse(FILE *file, ast::Node &programStmts, stmtFunction 
 #endif
     yyset_debug(DEBUG_LEXER, scanner);
 
-    LexerContext lexerCtx(&programStmts, interactive, callback);
+    LexerContext lexerCtx(&programStmts, filename, interactive, callback);
     yylex_init_extra(&lexerCtx, &scanner);
     lexerCtx.scanner = scanner;
     lexerCtx.interactive = interactive;

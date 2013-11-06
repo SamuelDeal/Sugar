@@ -20,8 +20,10 @@ using namespace sugar;
 
 int main(int argc, char **argv) {
     FILE *file;
+    std::string filename;
     if(argc > 1){
         file = fopen(argv[1],"r");
+        filename = argv[1];
         if(file == NULL){
             std::cout << "Unable to open " << argv[1] << std::endl;
             return 1;
@@ -34,7 +36,7 @@ int main(int argc, char **argv) {
     YYLTYPE locStart;
     ast::Node programStmts(ast::Node::eBlock, new ast::Block(), locStart);
     parser::BatchParser parser;    
-    parser.parse(file, programStmts);
+    parser.parse(file, filename, programStmts);
 
     gen::Generator generator;
     gen::GeneratedCode *generated = generator.generate(&programStmts);

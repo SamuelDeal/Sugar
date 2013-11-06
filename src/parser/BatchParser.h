@@ -2,6 +2,7 @@
 #define SUGAR_PARSER_BATCHPARSER_H
 
 #include <stdio.h>
+#include <string>
 
 namespace sugar {
 
@@ -15,7 +16,7 @@ class BatchParser
 {
 public:
     BatchParser();
-    void parse(FILE *file, ast::Node &programStmts) const;
+    void parse(FILE *file, const std::string& filename, ast::Node &programStmts) const;
 };
 
 } // namespace parser

@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 #include "../config_checked.h"
-
+#include <string>
 
 
 namespace sugar {
@@ -20,10 +20,7 @@ class InteractiveParser
 {
 public:
     InteractiveParser();
-    void parse(FILE *file, ast::Node &programStmts, stmtFunction callback = NULL) const;
-
-protected:
-    void onProgramStmt(ast::Node *programStmts, ast::Node *newStmt);
+    void parse(FILE *file, const std::string &filename, ast::Node &programStmts, stmtFunction callback = NULL) const;
 };
 
 } // namespace parser

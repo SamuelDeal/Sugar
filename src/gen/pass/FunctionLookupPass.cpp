@@ -18,42 +18,45 @@ FunctionLookupPass::FunctionLookupPass() {
 FunctionLookupPass::~FunctionLookupPass() {
 }
 
-void FunctionLookupPass::parse(ast::Node *node, ast::ArgumentDeclaration *data, Generation &gen) {
-    return;
+bool FunctionLookupPass::parse(ast::Node *node, ast::ArgumentDeclaration *data, Generation &gen) {
+    return true;
 }
 
-void FunctionLookupPass::parse(ast::Node *node, ast::Assignment *data, Generation &gen) {
-    return;
+bool FunctionLookupPass::parse(ast::Node *node, ast::Assignment *data, Generation &gen) {
+    return true;
 }
 
-void FunctionLookupPass::parse(ast::Node *node, ast::Block *data, Generation &gen) {
+bool FunctionLookupPass::parse(ast::Node *node, ast::Block *data, Generation &gen) {
     std::list<ast::Node*>::const_iterator it;
     for (it = data->stmts->begin(); it != data->stmts->end() && !gen.scope->isReturnReach(); it++) {
-        parseNode(*it, gen);
+        if(!parseNode(*it, gen)){
+            return false;
+        }
     }
+    return true;
 }
 
-void FunctionLookupPass::parse(ast::Node *node, ast::Comparison *data, Generation &gen) {
-    return;
+bool FunctionLookupPass::parse(ast::Node *node, ast::Comparison *data, Generation &gen) {
+    return true;
 }
 
-void FunctionLookupPass::parse(ast::Node *node, ast::Constant *data, Generation &gen) {
-    return;
+bool FunctionLookupPass::parse(ast::Node *node, ast::Constant *data, Generation &gen) {
+    return true;
 }
 
-void FunctionLookupPass::parse(ast::Node *node, ast::FunctionCall *data, Generation &gen) {
-    return;
+bool FunctionLookupPass::parse(ast::Node *node, ast::FunctionCall *data, Generation &gen) {
+    return true;
 }
 
-/*void FunctionLookupPass::parse(ast::Node *node, ast::FunctionDeclaration *data, Generation &gen) {
-    return;
+/*bool FunctionLookupPass::parse(ast::Node *node, ast::FunctionDeclaration *data, Generation &gen) {
+    return true;
 }*/
 
-void FunctionLookupPass::parse(ast::Node *node, ast::FunctionDeclaration *data, Generation &gen) {
+bool FunctionLookupPass::parse(ast::Node *node, ast::FunctionDeclaration *data, Generation &gen) {
     Type *returnType = gen.scope->getType(*data->getType()->name);
     if(NULL == returnType){
         std::cout << "Unknown type " << *data->getType()->name << std::endl;
-        return;
+        return false;
     }
 
     std::list<ast::Node*>::const_iterator it;
@@ -62,7 +65,7 @@ void FunctionLookupPass::parse(ast::Node *node, ast::FunctionDeclaration *data, 
         Type *argType = gen.scope->getType(*((ast::ArgumentDeclaration*)(*it)->data)->getType()->name);
         if(argType == NULL){
             std::cout << "Unknown type " << *((ast::ArgumentDeclaration*)(*it)->data)->getType()->name << std::endl;
-            return;
+            return false;
         }
         types.push_back(argType);
     }
@@ -90,38 +93,39 @@ void FunctionLookupPass::parse(ast::Node *node, ast::FunctionDeclaration *data, 
 #endif
     //node->setValue(function);
     */
+    return true;
 }
 
-void FunctionLookupPass::parse(ast::Node *node, ast::FunctionImplementation *data, Generation &gen) {
-    return;
+bool FunctionLookupPass::parse(ast::Node *node, ast::FunctionImplementation *data, Generation &gen) {
+    return true;
 }
 
-void FunctionLookupPass::parse(ast::Node *node, ast::Identifier *data, Generation &gen) {
-    return;
+bool FunctionLookupPass::parse(ast::Node *node, ast::Identifier *data, Generation &gen) {
+    return true;
 }
 
-void FunctionLookupPass::parse(ast::Node *node, ast::TypeIdentifier *data, Generation &gen) {
-    return;
+bool FunctionLookupPass::parse(ast::Node *node, ast::TypeIdentifier *data, Generation &gen) {
+    return true;
 }
 
-void FunctionLookupPass::parse(ast::Node *node, ast::Operator *data, Generation &gen) {
-    return;
+bool FunctionLookupPass::parse(ast::Node *node, ast::Operator *data, Generation &gen) {
+    return true;
 }
 
-void FunctionLookupPass::parse(ast::Node *node, ast::IfExpression *data, Generation &gen) {
-    return;
+bool FunctionLookupPass::parse(ast::Node *node, ast::IfExpression *data, Generation &gen) {
+    return true;
 }
 
-void FunctionLookupPass::parse(ast::Node *node, ast::ReturnStmt *data, Generation &gen) {
-    return;
+bool FunctionLookupPass::parse(ast::Node *node, ast::ReturnStmt *data, Generation &gen) {
+    return true;
 }
 
-void FunctionLookupPass::parse(ast::Node *node, ast::VariableDeclaration *data, Generation &gen) {
-    return;
+bool FunctionLookupPass::parse(ast::Node *node, ast::VariableDeclaration *data, Generation &gen) {
+    return true;
 }
 
-void FunctionLookupPass::parse(ast::Node *node, ast::WhileStmt *data, Generation &gen) {
-    return;
+bool FunctionLookupPass::parse(ast::Node *node, ast::WhileStmt *data, Generation &gen) {
+    return true;
 }
 
 

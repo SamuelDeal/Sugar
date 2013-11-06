@@ -31,11 +31,11 @@ IrPass::IrPass()
 {
 }
 
-void IrPass::parse(ast::Node *node, ast::ArgumentDeclaration *data, Generation &gen) {
+bool IrPass::parse(ast::Node *node, ast::ArgumentDeclaration *data, Generation &gen) {
     Type *type = gen.scope->getType(*data->getType()->name);
     if(type == NULL){
         std::cout << "Unknown type " << *data->getType()->name << std::endl;
-        return;
+        return false;
     }
     node->setType(*type);
     Scope *scope = gen.scope->getCurrentVarOwnerScope();
@@ -55,10 +55,10 @@ void IrPass::parse(ast::Node *node, ast::ArgumentDeclaration *data, Generation &
     }*/
     node->setRef(*var);
     node->setValue(alloc);
-    //return alloc;
+    return true;
 }
 
-void IrPass::parse(ast::Node *node, ast::Assignment *data, Generation &gen) {
+bool IrPass::parse(ast::Node *node, ast::Assignment *data, Generation &gen) {
 #if DEBUG_GENERATOR
     std::cerr << "Creating assignment" << std::endl;
 #endif
@@ -71,18 +71,20 @@ void IrPass::parse(ast::Node *node, ast::Assignment *data, Generation &gen) {
     llvm::Value* leftRef = data->left->getRef();
     if(leftRef == NULL){
         std::cout << "Left part is not assignable" << std::endl;
+        return false; //added
     }
     parseNode(data->right, gen);
     if(*data->right->getType() != *data->left->getType()){
         std::cout << "Uncompatible types in assigment  " << data->right->getType()->getName()
                   << " to " << data->left->getType()->getName() << std::endl;
-        return;
+        return false;
     }
     gen.builder.CreateStore(data->right->getValue(), leftRef);
     node->setType(gen.voidType);
+    return true;
 }
 
-void IrPass::parse(ast::Node *node, ast::Block *data, Generation &gen) {
+bool IrPass::parse(ast::Node *node, ast::Block *data, Generation &gen) {
     std::list<ast::Node*>::const_iterator it;
     llvm::Value *lastValue = NULL;
     ast::Node *lastStatement = NULL;
@@ -104,9 +106,10 @@ void IrPass::parse(ast::Node *node, ast::Block *data, Generation &gen) {
         node->setType(*lastStatement->getType());
         node->setValue(lastValue);
     }
+    return true;
 }
 
-void IrPass::parse(ast::Node *node, ast::Comparison *data, Generation &gen) {
+bool IrPass::parse(ast::Node *node, ast::Comparison *data, Generation &gen) {
     node->setType(gen.boolType);
 
     std::list<ast::Node *>::iterator it = data->expressions.begin();
@@ -124,11 +127,11 @@ void IrPass::parse(ast::Node *node, ast::Comparison *data, Generation &gen) {
         valueComp = operatorNode->getValue();
         if(valueComp == NULL){
             std::cout << "comparison failed" << std::endl;
-            return;
+            return false;
         }
         if(*operatorNode->getType() != gen.boolType){
             std::cout << "comparison is not boolean" << std::endl;
-            return;
+            return false;
         }
         ((ast::Operator*)(operatorNode->data))->args->clear();
         delete operatorNode;
@@ -142,9 +145,10 @@ void IrPass::parse(ast::Node *node, ast::Comparison *data, Generation &gen) {
         ++opIt;
     }
     node->setValue(result);
+    return true;
 }
 
-void IrPass::parse(ast::Node *node, ast::Constant *data, Generation &gen) {
+bool IrPass::parse(ast::Node *node, ast::Constant *data, Generation &gen) {
     switch(data->getConstantType()){
         case ast::Constant::eBoolean:
             node->setType(gen.boolType);
@@ -160,11 +164,12 @@ void IrPass::parse(ast::Node *node, ast::Constant *data, Generation &gen) {
             break;
         default:
             std::cout << "Unknown constant type" << std::endl;
-            return;
+            return false;
     }
+    return true;
 }
 
-void IrPass::parse(ast::Node *node, ast::FunctionCall *data, Generation &gen) {
+bool IrPass::parse(ast::Node *node, ast::FunctionCall *data, Generation &gen) {
     std::string *functionName = data->getFunctionName()->name;
 #if DEBUG_GENERATOR
     std::cerr << "\n*** Method call generation " << *functionName << std::endl;
@@ -181,7 +186,7 @@ void IrPass::parse(ast::Node *node, ast::FunctionCall *data, Generation &gen) {
         const Type* argType = (*it)->getType();
         if(argType == NULL){
             std::cout << "Parsing failed " << std::endl;
-            return;
+            return false;
         }
         else {
             types.push_back(argType);
@@ -192,7 +197,7 @@ void IrPass::parse(ast::Node *node, ast::FunctionCall *data, Generation &gen) {
 
     if (functions.empty()){
         std::cout << "undeclared function " << *functionName << std::endl;
-        return;
+        return false;
     }
     else{
         for(std::list<Function *>::iterator it = functions.begin(); it != functions.end(); it++){
@@ -212,15 +217,15 @@ void IrPass::parse(ast::Node *node, ast::FunctionCall *data, Generation &gen) {
                 std::cerr << "Creating method call " << std::endl;
 #endif
                 node->setValue(call);
-                return;
+                return true;
             }
         }
         std::cout << "no function match given arguments" << std::endl;
-        return;
+        return false;
     }
 }
 
-void IrPass::parse(ast::Node *node, ast::FunctionDeclaration *data, Generation &gen) {
+bool IrPass::parse(ast::Node *node, ast::FunctionDeclaration *data, Generation &gen) {
     core::Function* fn = gen.scope->getByDeclarationNode(node);
 
 
@@ -290,9 +295,10 @@ void IrPass::parse(ast::Node *node, ast::FunctionDeclaration *data, Generation &
     std::cerr << "Creating function: " << *data->getId()->name << std::endl;
 #endif*/
     //node->setValue(function);*/
+    return true;
 }
 
-void IrPass::parse(ast::Node *node, ast::FunctionImplementation *data, Generation &gen) {
+bool IrPass::parse(ast::Node *node, ast::FunctionImplementation *data, Generation &gen) {
     std::list<ast::Node*>::const_iterator it;
     llvm::Value *lastValue = NULL;
     ast::Node *lastStatement = NULL;
@@ -314,9 +320,10 @@ void IrPass::parse(ast::Node *node, ast::FunctionImplementation *data, Generatio
         node->setType(*lastStatement->getType());
         node->setValue(lastValue);
     }
+    return true;
 }
 
-void IrPass::parse(ast::Node *node, ast::Identifier *data, Generation &gen) {
+bool IrPass::parse(ast::Node *node, ast::Identifier *data, Generation &gen) {
 #if DEBUG_GENERATOR
     std::cerr << "\n*** Identifier " << *data->name << std::endl;
 #endif
@@ -342,7 +349,7 @@ void IrPass::parse(ast::Node *node, ast::Identifier *data, Generation &gen) {
         std::list<Function *> functions = gen.scope->getFuncs(*data->name);
         if (functions.empty()){
             std::cout << "undeclared variable or function " << *data->name << std::endl;
-            return;
+            return false;
         }
         else{
             std::list<const Type *> types;
@@ -361,18 +368,19 @@ void IrPass::parse(ast::Node *node, ast::Identifier *data, Generation &gen) {
                     std::cerr << "Creating method call " << *data->name << std::endl;
 #endif
                     node->setValue(call);
-                    return;
+                    return true;
                 }
             }
             std::cout << "undeclared variable or function " << *data->name << std::endl;
-            return;
+            return false;
         }
     }
+    return true;
 }
 
 
 
-void IrPass::parse(ast::Node *node, ast::IfExpression *data, Generation &gen) {
+bool IrPass::parse(ast::Node *node, ast::IfExpression *data, Generation &gen) {
     parseNode(data->cond, gen);
     llvm::Value *condV = data->cond->getValue();
 
@@ -436,7 +444,7 @@ void IrPass::parse(ast::Node *node, ast::IfExpression *data, Generation &gen) {
 #if DEBUG_GENERATOR
         std::cerr << gen.scopeHierarchy() << std::endl;
 #endif
-        return;
+        return true;
     }
     else{
 #if DEBUG_GENERATOR
@@ -452,9 +460,10 @@ void IrPass::parse(ast::Node *node, ast::IfExpression *data, Generation &gen) {
 #endif
         node->setValue(phiValue);
     }
+    return true;
 }
 
-void IrPass::parse(ast::Node *node, ast::Operator *data, Generation &gen) {
+bool IrPass::parse(ast::Node *node, ast::Operator *data, Generation &gen) {
 #if DEBUG_GENERATOR
     std::string debugTypes;
 #endif
@@ -479,7 +488,7 @@ void IrPass::parse(ast::Node *node, ast::Operator *data, Generation &gen) {
 
     if (operators.empty()){
         std::cout << "undeclared operator" << std::endl;
-        return;
+        return false;
     }
     else{
         for(std::list<Operator *>::iterator it = operators.begin(); it != operators.end(); it++){
@@ -497,32 +506,32 @@ void IrPass::parse(ast::Node *node, ast::Operator *data, Generation &gen) {
                 std::cerr << "Creating operator call " << std::endl;
 #endif
                 node->setValue(call);
-                return;
+                return true;
             }
         }
         std::cout << "no operator match given arguments : " <<  data->operatorId << std::endl;
-        return;
+        return false;
     }
 }
 
-void IrPass::parse(ast::Node *node, ast::ReturnStmt *data, Generation &gen) {
+bool IrPass::parse(ast::Node *node, ast::ReturnStmt *data, Generation &gen) {
     parseNode(data->expression, gen);
     llvm::Value* returnExpr = gen.builder.CreateRet(data->expression->getValue());
     gen.scope->setReturnReach();
     node->setValue(returnExpr);
-    return;
+    return true;
 }
 
-void IrPass::parse(ast::Node *node, ast::TypeIdentifier *data, Generation &gen) {
+bool IrPass::parse(ast::Node *node, ast::TypeIdentifier *data, Generation &gen) {
     //Nothing to do
-    return;
+    return true;
 }
 
-void IrPass::parse(ast::Node *node, ast::VariableDeclaration *data, Generation &gen) {
+bool IrPass::parse(ast::Node *node, ast::VariableDeclaration *data, Generation &gen) {
     Type *type = gen.scope->getType(*data->getType()->name);
     if(type == NULL){
         std::cout << "Unknown type " << *data->getType()->name << std::endl;
-        return;
+        return false;
     }
     node->setType(*type);
     Scope *scope = gen.scope->getCurrentVarOwnerScope();
@@ -569,9 +578,10 @@ void IrPass::parse(ast::Node *node, ast::VariableDeclaration *data, Generation &
         node->setRef(*var);
         node->setValue(alloc);
     }
+    return true;
 }
 
-void IrPass::parse(ast::Node *node, ast::WhileStmt *data, Generation &gen) {
+bool IrPass::parse(ast::Node *node, ast::WhileStmt *data, Generation &gen) {
     node->setType(gen.voidType);
 
     llvm::Function *currentFunction = gen.builder.GetInsertBlock()->getParent();
@@ -608,7 +618,7 @@ void IrPass::parse(ast::Node *node, ast::WhileStmt *data, Generation &gen) {
     gen.scope->getParent()->replaceBlock(mergeBB);
     gen.popBlock();
 
-    return;
+    return true;
 }
 
 } // namespace pass
