@@ -22,10 +22,7 @@ if a == 5 or a == b:
 else :
 	echo 10
 	
-if a == 4 || a > b
-	echo 11
+if a == 4 || a > b 
+	echo 11 $
 else 
 	echo 12
-	
-	
-

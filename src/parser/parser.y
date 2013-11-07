@@ -83,6 +83,7 @@ using namespace sugar;
 %token <token> TOK_INDENT TOK_BAD_INDENT TOK_OUTDENT TOK_END_INSTR TOK_NO_SPACE
 %token <token> TRETURN TIF TELSE TTRUE TFALSE
 %token <token> TCEQ TPLUS TMINUS TMUL TDIV TCOLON TOR TAND TWHILE TMINUSMINUS TPLUSPLUS
+%token <token> UNKNOWN_TOKEN
 
 /* Types */
 %type <ident> ident

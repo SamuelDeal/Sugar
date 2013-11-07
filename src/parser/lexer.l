@@ -46,11 +46,31 @@ const char * const  state_names[] = {
 }
 
 #define YY_USER_ACTION \
-    yylloc_param->first_line = yylloc_param->last_line = yylineno; \
-    yylloc_param->first_column = yylloc_param->last_column = 0;
+    yylloc_param->first_line = yylloc_param->last_line = yylineno;
 
 void yyerror(YYLTYPE *locp, sugar::parser::LexerContext *lexerCtx, const char *err){
-    std::cout << locp->first_line << " " << err << std::endl;
+#if SHELL_USE_COLOR
+    if(isatty(fileno(stdout)) == 1){
+        std::cout << "\x1b[1m\x1b[37m"  << (lexerCtx->filename == "" ? "stdin" : lexerCtx->filename) << ":" << locp->first_line;
+        std::cout << ":" << locp->first_column << ": \x1b[1m\x1b[31m" << "error: \x1b[1m\x1b[37m" << err << "\x1b[0m" << std::endl;
+        std::cout << lexerCtx->currentLine << std::endl;
+        for(unsigned int i = 0; i < locp->first_column; i++) {
+            std::cout << (lexerCtx->currentLine[i] == '\t' ? '\t' : ' ');
+        }
+        std::cout << "\x1b[1m\x1b[32m^\x1b[0m" << std::endl << std::endl;
+    }
+    else{
+#endif
+        std::cout << (lexerCtx->filename == "" ? "stdin" : lexerCtx->filename) << ":" << locp->first_line;
+        std::cout << ":" << locp->first_column << ": error: " << err << std::endl;
+        std::cout << lexerCtx->currentLine << std::endl;
+        for(unsigned int i = 0; i < locp->first_column; i++) {
+            std::cout << (lexerCtx->currentLine[i] == '\t' ? '\t' : ' ');
+        }
+        std::cout << "^" << std::endl << std::endl;
+#if SHELL_USE_COLOR
+    }
+#endif
 }
 
 #include "../ast/all.h"
@@ -100,6 +120,8 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 
 
 %%
+    yylloc_param->first_column += yyleng;
+    LOG_LEXER("column: %d (+%d)", yylloc_param->first_column, yyleng);
     if(yyget_extra(yyscanner)->eof){
         if(yyget_extra(yyscanner)->tokens.empty()) {
             LOG_LEXER("End of file !!!!!");
@@ -135,7 +157,7 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
         lexPushState(lex_state_normal, yyscanner);
     }
 
-    \r\n {
+    "\r\n" {
         yyless(1);
     }
 
@@ -145,15 +167,17 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
     }
 
     [^\r\n]* {
+        yylloc_param->first_column = 0;
         yyget_extra(yyscanner)->currentLine = "";
         yyget_extra(yyscanner)->currentLine.append(yytext, yyleng);
+        LOG_LEXER("copying line: %s", yyget_extra(yyscanner)->currentLine.c_str());
         yyless(0);
         lexPushState(lex_state_normal, yyscanner);
     }
 }
 
 <lex_state_skipline>{
-    \r\n {
+    "\r\n" {
         yyless(1);
     }
 
@@ -173,14 +197,16 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
         }
     }
 
-    \r\n  {
+    "\r\n"  {
         yyless(1);
     }
 
     [\r\n][^\r\n]* {
         ++yylineno;
+        yylloc_param->first_column = 0;
         yyget_extra(yyscanner)->currentLine = "";
         yyget_extra(yyscanner)->currentLine.append(yytext+1, yyleng-1);
+        LOG_LEXER("copying line 2: %s", yyget_extra(yyscanner)->currentLine.c_str());
         yyless(1);
     }
 
@@ -248,7 +274,7 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
     [ \t]* { /* ignoring spaces */
     }
 
-    \r\n {
+    "\r\n" {
         yyless(1);
     }
 
@@ -284,9 +310,18 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 }
 
 <lex_state_newline,lex_state_rbrace_newline>{
-    [ \t]*(\r\n|\r|\n)   { /* ignoring blank line */
+    [ \t]+(\r\n|\r|\n)   { /* ignoring blank line */
+        yyless(yyleng-1);
+    }
+
+    [\r\n][^\r\n]*       {
         ++yylineno;
         yyget_extra(yyscanner)->lineIndents = 0;
+        yylloc_param->first_column = 0;
+        yyget_extra(yyscanner)->currentLine = "";
+        yyget_extra(yyscanner)->currentLine.append(yytext+1, yyleng-1);
+        LOG_LEXER("copying line 4: %s", yyget_extra(yyscanner)->currentLine.c_str());
+        yyless(1);
     }
 
     " "+            {
@@ -375,8 +410,17 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 }
 
 <lex_state_skipnl>{
-    [ \t]*(\r\n|\r|\n)   { /* ignoring blank line */
+    [ \t]+(\r\n|\r|\n)   { /* ignoring blank line */
+        yyless(yyleng-1);
+    }
+
+    [\r\n][^\r\n]*       {
         ++yylineno;
+        yylloc_param->first_column = 0;
+        yyget_extra(yyscanner)->currentLine = "";
+        yyget_extra(yyscanner)->currentLine.append(yytext+1, yyleng-1);
+        LOG_LEXER("copying line 5: %s", yyget_extra(yyscanner)->currentLine.c_str());
+        yyless(1);
     }
 
     .                               {
@@ -426,7 +470,7 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 }
 
 <lex_state_unstack>{
-    \r\n           {
+    "\r\n"           {
         yyless(1);
     }
     [\r\n]          {
@@ -457,14 +501,15 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 
 
 <lex_state_normal>{
-    [\t ]+                      {}
-    \r\n                        {
+    "\r\n"                        {
         yyless(1);
     }
     [\r\n][^\r\n]*                     {
         ++yylineno;
+        yylloc_param->first_column = 0;
         yyget_extra(yyscanner)->currentLine = "";
         yyget_extra(yyscanner)->currentLine.append(yytext+1, yyleng-1);
+        LOG_LEXER("copying line 3: %s", yyget_extra(yyscanner)->currentLine.c_str());
         yyless(1);
 #if INTERACTIVE_INPUT
     if(yyget_extra(yyscanner)->interactive){
@@ -479,6 +524,7 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
     }
 #endif
     }
+    [\t ]+                      { /*yylloc_param->first_column += yyleng;*/ }
     "//"                        { lexPushState(lex_state_skipline, yyscanner); }
     \#[ \t]                     { lexPushState(lex_state_skipline, yyscanner); }
     \/\*+                       {
@@ -545,9 +591,10 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
         delete yyget_extra(yyscanner)->indents.top();
         yyget_extra(yyscanner)->indents.pop();
     }
-    .                           {
-        LOG_LEXER("Unknown token!!!!! %s", yytext);
-        yyterminate();
+
+    .                         {
+        yyerror(yylloc_param, yyget_extra(yyscanner), "parsing failed: unknown token");
+        return UNKNOWN_TOKEN;
     }
 }
 
