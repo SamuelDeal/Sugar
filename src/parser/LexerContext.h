@@ -37,7 +37,7 @@ typedef void (*stmtFunction)(ast::Node *programStmts, ast::Node *stmt);
 class LexerContext
 {
 public:
-    LexerContext(ast::Node *programStmts, const std::string &filename, bool interactive, stmtFunction callback);
+    LexerContext(ast::Node *programStmts, const std::string *filename, bool interactive, stmtFunction callback);
     void onProgramStmt(ast::Node *stmt);
 
     IndentInfo indentContext;
@@ -51,8 +51,8 @@ public:
     void *scanner;
     bool interactive;
     ast::Node *programStmts;
-    const std::string filename;
-    std::string currentLine;
+    const std::string *filename;
+    unsigned int errorCount;
 
 protected:
     stmtFunction _callback;

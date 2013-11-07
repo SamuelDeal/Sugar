@@ -17,7 +17,7 @@ void BatchParser_onProgramStmt(ast::Node *programStmts, ast::Node *newStmt){
     ((ast::Block *)(programStmts->data))->stmts->push_back(newStmt);
 }
 
-void BatchParser::parse(FILE *file, const std::string& filename, ast::Node &programStmts) const {
+bool BatchParser::parse(FILE *file, const std::string *filename, ast::Node &programStmts) const {
     yydebug = DEBUG_PARSER;
 
     yyscan_t scanner;
@@ -30,10 +30,11 @@ void BatchParser::parse(FILE *file, const std::string& filename, ast::Node &prog
 
     yy_push_state(lex_state_newline, scanner);
     yyset_in( file, scanner );
-    yyparse(&lexerCtx);
+    bool succeed = (yyparse(&lexerCtx) == 0);
 
     yylex_destroy(scanner);
     fclose(file);
+    return succeed && (lexerCtx.errorCount == 0);
 }
 
 

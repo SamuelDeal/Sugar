@@ -20,7 +20,7 @@ class InteractiveParser
 {
 public:
     InteractiveParser();
-    void parse(FILE *file, const std::string &filename, ast::Node &programStmts, stmtFunction callback = NULL) const;
+    bool parse(FILE *file, const std::string *filename, ast::Node &programStmts, stmtFunction callback = NULL) const;
 };
 
 } // namespace parser

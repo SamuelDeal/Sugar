@@ -9,6 +9,8 @@
 #define INDENT_ALLOW_MIXED 1 //source indentation could mix tabs and spaces ?
 #define INDENT_SPACE_SIZE 4 //space for indent? (not mandatory)
 
+#define MAX_ERROR_COUNT 2
+
 #define LIBREADLINE 1
 #define LIBEDITLINE 0
 

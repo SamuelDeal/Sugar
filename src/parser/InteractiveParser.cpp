@@ -162,7 +162,7 @@ InteractiveParser::InteractiveParser()
 {
 }
 
-void InteractiveParser::parse(FILE *file, const std::string &filename, ast::Node &programStmts, stmtFunction callback) const {
+bool InteractiveParser::parse(FILE *file, const std::string *filename, ast::Node &programStmts, stmtFunction callback) const {
     yydebug = DEBUG_PARSER;
 
     yyscan_t scanner;
@@ -186,10 +186,11 @@ void InteractiveParser::parse(FILE *file, const std::string &filename, ast::Node
 
     yy_push_state(lex_state_newline, scanner);
     yyset_in( file, scanner );
-    yyparse(&lexerCtx);
+    bool succeed = (yyparse(&lexerCtx) == 0);
 
     yylex_destroy(scanner);
     fclose(file);
+    return succeed && (lexerCtx.errorCount == 0);
 }
 
 } // namespace parser

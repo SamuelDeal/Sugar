@@ -16,10 +16,10 @@ int main(int argc, char **argv) {
     }
 
     FILE *file;
-    std::string filename;
+    std::string *filename = NULL;
     if(argc > 2){
         file = fopen(argv[1],"r");
-        filename = argv[1];
+        filename = new std::string(argv[1]);
     }
     else{
         file = stdin;
@@ -33,7 +33,9 @@ int main(int argc, char **argv) {
     YYLTYPE locStart;
     ast::Node programStmts(ast::Node::eBlock, new ast::Block(), locStart);
     parser::BatchParser parser;
-    parser.parse(file, filename, programStmts);
+    if(!parser.parse(file, filename, programStmts)){
+        return 1;
+    }
 
     gen::Compiler compiler;
     bool compilSuccess = compiler.compile(programStmts, argv[(argc == 2 ? 1 : 2)]);

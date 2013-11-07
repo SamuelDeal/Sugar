@@ -48,4 +48,9 @@
 #define SHELL_USE_COLOR 0
 #endif
 
+#if !defined(MAX_ERROR_COUNT) || MAX_ERROR_COUNT < 1
+#undef MAX_ERROR_COUNT
+#define MAX_ERROR_COUNT 10
+#endif
+
 #endif // CONFIG_CHECKED_H

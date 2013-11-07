@@ -16,7 +16,7 @@ class BatchParser
 {
 public:
     BatchParser();
-    void parse(FILE *file, const std::string& filename, ast::Node &programStmts) const;
+    bool parse(FILE *file, const std::string *filename, ast::Node &programStmts) const;
 };
 
 } // namespace parser
