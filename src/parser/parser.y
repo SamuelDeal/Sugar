@@ -127,19 +127,25 @@ using namespace sugar;
 program         : program_stmts { }
                 ;
 
-program_stmts   : program_stmt { lexerCtx->onProgramStmt($<stmt>1); }
-                | program_stmts program_stmt { lexerCtx->onProgramStmt($<stmt>2); }
-                | program_stmts TOK_END_INSTR {}
+program_stmts   : program_stmt { if($<stmt>1 != NULL) { lexerCtx->onProgramStmt($<stmt>1); } }
+                | program_stmts program_stmt { if($<stmt>2 != NULL) { lexerCtx->onProgramStmt($<stmt>2); } }
                 ;
 
 block_stmts     : stmt TOK_END_INSTR {
                     $$ = ast::Block::create(yyloc);
-                    ((ast::Block*)($$->data))->stmts->push_back($<stmt>1);
+                    if($<stmt>1 != NULL){
+                        ((ast::Block*)($$->data))->stmts->push_back($<stmt>1);
+                    }
                 }
-                | block_stmts stmt TOK_END_INSTR { ((ast::Block*)($1->data))->stmts->push_back($<stmt>2); }
+                | block_stmts stmt TOK_END_INSTR {
+                    if($<stmt>2 != NULL){
+                        ((ast::Block*)($1->data))->stmts->push_back($<stmt>2);
+                    }
+                }
                 ;
 
-stmt            : action_stmt { $$ = $1; }
+stmt            : /* empty */ { $$ = NULL; }
+                | action_stmt { $$ = $1; }
                 | var_decl {
                     ast::VariableDeclaration *varDecl = ((ast::VariableDeclaration*)($1->data));
                     if(varDecl->assign == NULL){

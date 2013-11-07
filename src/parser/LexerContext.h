@@ -52,6 +52,7 @@ public:
     bool interactive;
     ast::Node *programStmts;
     const std::string filename;
+    std::string currentLine;
 
 protected:
     stmtFunction _callback;

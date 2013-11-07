@@ -45,7 +45,9 @@ const char * const  state_names[] = {
     LOG_LEXER(" -- state poped: %s, (current: %s, line %d)", state_names[old], state_names[YY_START], __LINE__); \
 }
 
-#define YY_USER_ACTION yylloc_param->first_line = yylineno;
+#define YY_USER_ACTION \
+    yylloc_param->first_line = yylloc_param->last_line = yylineno; \
+    yylloc_param->first_column = yylloc_param->last_column = 0;
 
 void yyerror(YYLTYPE *locp, sugar::parser::LexerContext *lexerCtx, const char *err){
     std::cout << locp->first_line << " " << err << std::endl;
@@ -93,7 +95,7 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 %option stack
 %option reentrant
 %option bison-bridge
-%option yylineno
+%option noyylineno
 %option bison-locations
 
 
@@ -129,21 +131,33 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 }
 
 <INITIAL>{
-    "#!" {
-        lexPushState(lex_state_skipline, yyscanner);
-    }
-    \r\n|\r|\n {
+    #![^\r\n]* {
         lexPushState(lex_state_normal, yyscanner);
     }
 
-    . {
+    \r\n {
+        yyless(1);
+    }
+
+    [\r\n] {
+        yyless(0);
+        lexPushState(lex_state_normal, yyscanner);
+    }
+
+    [^\r\n]* {
+        yyget_extra(yyscanner)->currentLine = "";
+        yyget_extra(yyscanner)->currentLine.append(yytext, yyleng);
         yyless(0);
         lexPushState(lex_state_normal, yyscanner);
     }
 }
 
 <lex_state_skipline>{
-    \r\n|\r|\n {
+    \r\n {
+        yyless(1);
+    }
+
+    [\r\n] {
         yyless(0);
         lexPopState(yyscanner);
     }
@@ -159,7 +173,15 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
         }
     }
 
-    \r\n|\r|\n  {
+    \r\n  {
+        yyless(1);
+    }
+
+    [\r\n][^\r\n]* {
+        ++yylineno;
+        yyget_extra(yyscanner)->currentLine = "";
+        yyget_extra(yyscanner)->currentLine.append(yytext+1, yyleng-1);
+        yyless(1);
     }
 
     . {
@@ -226,7 +248,11 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
     [ \t]* { /* ignoring spaces */
     }
 
-    \r\n|\r|\n {
+    \r\n {
+        yyless(1);
+    }
+
+    [\r\n] {
         yyless(0);
         lexPopState(yyscanner);
         yyget_extra(yyscanner)->lineIndents = 0;
@@ -258,7 +284,8 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 }
 
 <lex_state_newline,lex_state_rbrace_newline>{
-    [ \t]*\r\n|[ \t]*\r|[ \t]*\n   { /* ignoring blank line */
+    [ \t]*(\r\n|\r|\n)   { /* ignoring blank line */
+        ++yylineno;
         yyget_extra(yyscanner)->lineIndents = 0;
     }
 
@@ -348,21 +375,8 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 }
 
 <lex_state_skipnl>{
-    [ \t]*\r\n|[ \t]*\r|[ \t]*\n   { /* ignoring blank line */
-    }
-
-    \r\n|\r|\n*                     {
-#if INTERACTIVE_INPUT
-    if(yyget_extra(yyscanner)->interactive){
-        lexPopState(yyscanner);
-        yyget_extra(yyscanner)->pendingEndInstr = true;
-    }
-    else {
-#endif
-        lexPopState(yyscanner);
-#if INTERACTIVE_INPUT
-    }
-#endif
+    [ \t]*(\r\n|\r|\n)   { /* ignoring blank line */
+        ++yylineno;
     }
 
     .                               {
@@ -372,7 +386,7 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 }
 
 <lex_state_spaceaware>{
-    [ \t]*\r\n|[ \t]*\r|[ \t]*\n   { /* ignoring blank line */
+    [ \t]*(\r\n|\r|\n)   { /* ignoring blank line */
         yyless(0);
         yyget_extra(yyscanner)->pendingEndInstr = true;
         yyget_extra(yyscanner)->lineIndents = 0;
@@ -412,7 +426,10 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 }
 
 <lex_state_unstack>{
-    \r\n|\r|\n          {
+    \r\n           {
+        yyless(1);
+    }
+    [\r\n]          {
         yyless(0);
         if(yyget_extra(yyscanner)->tokens.empty()){
             lexPopState(yyscanner);
@@ -440,8 +457,15 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 
 
 <lex_state_normal>{
-    [\t ]*                      {}
-    \r\n|\r|\n                  {
+    [\t ]+                      {}
+    \r\n                        {
+        yyless(1);
+    }
+    [\r\n][^\r\n]*                     {
+        ++yylineno;
+        yyget_extra(yyscanner)->currentLine = "";
+        yyget_extra(yyscanner)->currentLine.append(yytext+1, yyleng-1);
+        yyless(1);
 #if INTERACTIVE_INPUT
     if(yyget_extra(yyscanner)->interactive){
         return TOK_END_INSTR;
@@ -522,7 +546,7 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
         yyget_extra(yyscanner)->indents.pop();
     }
     .                           {
-        LOG_LEXER("Unknown token!!!!!");
+        LOG_LEXER("Unknown token!!!!! %s", yytext);
         yyterminate();
     }
 }
