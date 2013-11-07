@@ -38,6 +38,7 @@ class LexerContext
 {
 public:
     LexerContext(ast::Node *programStmts, const std::string *filename, bool interactive, stmtFunction callback);
+    ~LexerContext();
     void onProgramStmt(ast::Node *stmt);
 
     IndentInfo indentContext;

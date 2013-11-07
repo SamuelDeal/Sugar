@@ -190,7 +190,7 @@ bool InteractiveParser::parse(FILE *file, const std::string *filename, ast::Node
 
     yylex_destroy(scanner);
     fclose(file);
-    return succeed && (lexerCtx.errorCount == 0);
+    return succeed && (interactive || (lexerCtx.errorCount == 0));
 }
 
 } // namespace parser

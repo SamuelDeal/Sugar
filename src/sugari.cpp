@@ -66,10 +66,10 @@ int main(int argc, char **argv) {
 #endif
 
     parser::InteractiveParser parser;
-    parser.parse(file, filename, *programStmts, onMainStatement);
+    bool succeed = parser.parse(file, filename, *programStmts, onMainStatement);
 
     delete programStmts;
-    return 0;
+    return succeed ? 0 : 1;
 }
 
 

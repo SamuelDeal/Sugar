@@ -149,6 +149,9 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
         }
     }
 <*><<EOF>>                  {
+    if(yyget_extra(yyscanner)->interactive){
+        yyterminate();
+    }
     if(yyget_extra(yyscanner)->eof){
         int result = yyget_extra(yyscanner)->tokens.front();
         yyget_extra(yyscanner)->tokens.pop();
@@ -545,16 +548,23 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
         lexPushState(lex_state_mlcomment, yyscanner);
         yyget_extra(yyscanner)->commentStartCount = yyleng -1;
     }
+    q|quit|exit                 {
+        if(yyget_extra(yyscanner)->interactive){
+            yyterminate();
+        }
+        else{
+            lexPushState(lex_state_spaceaware, yyscanner);
+            yyReturnId(TIDENTIFIER, yyscanner);
+        }
+    }
     "return"                    { return TRETURN; }
     "if"                        { return TIF; }
     "else"                      { return TELSE; }
     "true"                      { return TTRUE; }
     "false"                     { return TFALSE; }
-    "and"                       { return TAND; }
-    "&&"                        { return TAND; }
-    "or"                        { return TOR;  }
+    and|&&                      { return TAND; }
+    or|\|\|                     { return TOR;  }
     "while"                     { return TWHILE; }
-    "||"                        { return TOR;  }
     [A-Z][a-zA-Z0-9_\?]*        { yyReturnId(TTYPENAME, yyscanner); }
     [a-z_][a-zA-Z0-9_\?!]*      { lexPushState(lex_state_spaceaware, yyscanner); yyReturnId(TIDENTIFIER, yyscanner); }
     [0-9]+\.[0-9]*              { yyReturnId(TDOUBLE, yyscanner); }

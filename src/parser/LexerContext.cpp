@@ -26,6 +26,12 @@ LexerContext::LexerContext(ast::Node *programStmtsArg, const std::string *filena
     errorCount = 0;
 }
 
+LexerContext::~LexerContext(){
+    if(filename != NULL){
+        delete filename;
+    }
+}
+
 void LexerContext::onProgramStmt(ast::Node *stmt){
     _callback(programStmts, stmt);
 }

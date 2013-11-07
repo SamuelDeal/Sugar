@@ -92,8 +92,6 @@ typedef struct YYLTYPE {
             (current).filename = YYRHSLOC(Rhs, 0).filename; \
         } \
     while(0)
-
-
 }
 
 
