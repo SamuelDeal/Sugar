@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "../../config_checked.h"
+#include "../../utils/config_checked.h"
 #include "../../ast/all.h"
 
 #include <llvm/Support/TargetSelect.h>

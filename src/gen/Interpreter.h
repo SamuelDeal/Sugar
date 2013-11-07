@@ -2,7 +2,7 @@
 #define SUGAR_GEN_INTERPRETER_H
 
 #include "Generator.h"
-#include "../config_checked.h"
+#include "../utils/config_checked.h"
 
 namespace llvm {
     class ExecutionEngine;

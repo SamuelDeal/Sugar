@@ -1,6 +1,6 @@
 #include "FunctionLookupPass.h"
 
-#include "../../config_checked.h"
+#include "../../utils/config_checked.h"
 #include "../../ast/all.h"
 
 #include "../Generation.h"

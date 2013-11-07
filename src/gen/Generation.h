@@ -8,7 +8,7 @@
 #include "../core/Scope.h"
 #include "../core/CastGraph.h"
 #include "../core/Type.h"
-#include "../config_checked.h"
+#include "../utils/config_checked.h"
 #include "../utils/Getter.h"
 
 namespace llvm {

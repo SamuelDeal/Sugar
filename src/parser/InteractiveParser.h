@@ -2,7 +2,7 @@
 #define SUGAR_PARSER_INTERACTIVEPARSER_H
 
 #include <stdio.h>
-#include "../config_checked.h"
+#include "../utils/config_checked.h"
 #include <string>
 
 

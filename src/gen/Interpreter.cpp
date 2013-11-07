@@ -1,7 +1,7 @@
 #include "Interpreter.h"
 
-#include "../config_checked.h"
-#include "../utils.h"
+#include "../utils/config_checked.h"
+#include "../utils/utils.h"
 #include "GeneratedCode.h"
 #include "../ast/Block.h"
 #include "Generation.h"

@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <stack>
 
-#include "../config_checked.h"
+#include "../utils/config_checked.h"
 
 #define YY_HEADER_EXPORT_START_CONDITIONS 1
 
@@ -26,6 +26,8 @@ ast::Node* makeOperatorCall(ast::Node *subject, int operatorId, ast::Node *arg1,
 ast::Node* makeUnaryOperatorCall(ast::Node *subject, int operatorId, bool before, YYLTYPE yyloc){
     return ast::Operator::create(operatorId, subject, before, yyloc);
 }
+
+
 
 %}
 
@@ -90,6 +92,8 @@ typedef struct YYLTYPE {
             (current).filename = YYRHSLOC(Rhs, 0).filename; \
         } \
     while(0)
+
+
 }
 
 
@@ -362,12 +366,12 @@ value           : TINTEGER { $$ = ast::Constant::create(atoll($1->c_str()), @$);
                 ;
 
 error_detected  : error {
+                    ++lexerCtx->errorCount;
                     if(lexerCtx->interactive){
                         yyclearin;
                         yyerrok;
                     }
                     else{
-                        ++lexerCtx->errorCount;
                         if(lexerCtx->errorCount > MAX_ERROR_COUNT){
                             YYABORT;
                         }

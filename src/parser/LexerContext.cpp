@@ -1,6 +1,6 @@
 #include "LexerContext.h"
 
-#include "../config_checked.h"
+#include "../utils/config_checked.h"
 
 namespace sugar {
 namespace parser {

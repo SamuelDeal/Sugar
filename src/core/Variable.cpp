@@ -2,7 +2,7 @@
 #include <llvm/Value.h>
 
 #include "Variable.h"
-#include "../utils.h"
+#include "../utils/utils.h"
 
 namespace sugar {
 namespace core {

@@ -3,7 +3,7 @@
 
 #include "NodeData.h"
 
-#include "../utils.h"
+#include "../utils/utils.h"
 #include "../parser/parser.hpp"
 
 namespace sugar {

@@ -1,7 +1,7 @@
 #include <iostream>
 #include <stdio.h>
 
-#include "config_checked.h"
+#include "utils/config_checked.h"
 
 #include "parser/InteractiveParser.h"
 

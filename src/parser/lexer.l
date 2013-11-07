@@ -1,6 +1,6 @@
 %top{
 
-#include "../config_checked.h"
+#include "../utils/config_checked.h"
 #include "LexerContext.h"
 
 #define YY_EXTRA_TYPE sugar::parser::LexerContext*
@@ -51,9 +51,16 @@ const char * const  state_names[] = {
     yylloc_param->last_column = yylloc_param->first_column + yyleng; \
     yylloc_param->filename = yyget_extra(yyscanner)->filename;
 
+#define YY_USER_INIT \
+    yylloc_param->first_line = 1; \
+    yylloc_param->first_column = 0;
 
 void yyerror(YYLTYPE *locp, sugar::parser::LexerContext *lexerCtx, const char *err){
 #if SHELL_USE_COLOR
+    if(lexerCtx->interactive && lexerCtx->errorCount > 0){
+        return;
+    }
+
     if(isatty(fileno(stdout)) == 1){
         std::cout << "\x1b[1m\x1b[37m"  << (lexerCtx->filename == NULL ? "(stdin)" : *lexerCtx->filename) << ":" << locp->first_line;
         std::cout << ":" << locp->first_column << ": \x1b[1m\x1b[31m" << "error: \x1b[1m\x1b[37m" << err << "\x1b[0m" << std::endl;
@@ -516,6 +523,7 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
         #if INTERACTIVE_INPUT
             if(yyget_extra(yyscanner)->interactive){
                 lexPushState(lex_state_saveline, yyscanner);
+                yyget_extra(yyscanner)->errorCount = 0;
                 return TOK_END_INSTR;
             }
             else {

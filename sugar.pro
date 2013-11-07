@@ -83,7 +83,8 @@ SOURCES += \
     src/gen/pass/FunctionLookupPass.cpp \
     src/ast/FunctionImplementation.cpp \
     src/core/LanguageError.cpp \
-    src/ast/NodeData.cpp
+    src/ast/NodeData.cpp \
+    src/utils/utils.cpp
 
 HEADERS += \
     codegen.h \
@@ -171,7 +172,9 @@ HEADERS += \
     src/core/LanguageError.h \
     src/ast/NodeData.h \
     src/utils/Getter.h \
-    src/utils/Getter.tpl.h
+    src/utils/Getter.tpl.h \
+    src/utils/config_checked.h \
+    src/utils/utils.h
 
 OTHER_FILES += \
     parser.y \

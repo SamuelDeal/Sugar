@@ -1,7 +1,7 @@
 #ifndef CONFIG_CHECKED_H
 #define CONFIG_CHECKED_H
 
-#include "config.h"
+#include "../config.h"
 
 #ifndef INDENT_ALLOW_MIXED
 #define INDENT_ALLOW_MIXED 0

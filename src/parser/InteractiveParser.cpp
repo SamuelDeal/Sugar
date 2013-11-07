@@ -4,7 +4,7 @@
 #include <unistd.h>
 #endif
 
-#include "../config_checked.h"
+#include "../utils/config_checked.h"
 #define INTERACTIVE_INPUT 1
 #include "lexer.inter.hpp"
 

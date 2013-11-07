@@ -1,6 +1,6 @@
 #include "Generation.h"
 
-#include "../config_checked.h"
+#include "../utils/config_checked.h"
 
 #include <iostream>
 #include "../utils/Getter.tpl.h"

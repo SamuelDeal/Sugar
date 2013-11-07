@@ -1,6 +1,6 @@
 #include "GeneratedCode.h"
 
-#include "../utils.h"
+#include "../utils/utils.h"
 #include <llvm/Function.h>
 #include <llvm/BasicBlock.h>
 

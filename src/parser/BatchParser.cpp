@@ -1,6 +1,6 @@
 #include "BatchParser.h"
 
-#include "../config_checked.h"
+#include "../utils/config_checked.h"
 #define INTERACTIVE_INPUT 0
 #include "lexer.batch.hpp"
 

@@ -2,7 +2,7 @@
 #define SUGAR_AST_FUNCTIONCALL_H
 
 #include <list>
-#include "../utils.h"
+#include "../utils/utils.h"
 
 #include "NodeData.h"
 #include "../core/Function.h"

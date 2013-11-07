@@ -1,6 +1,6 @@
 #include "Scope.h"
 
-#include "../config_checked.h"
+#include "../utils/config_checked.h"
 #include "Function.h"
 #include "Operator.h"
 #include "Variable.h"
