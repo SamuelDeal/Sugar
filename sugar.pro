@@ -254,4 +254,9 @@ OTHER_FILES += \
     test/test012.test \
     test/test012.expected \
     test/test011.test \
-    test/test011.expected
+    test/test011.expected \
+    test/test027.test \
+    test/test027.interpret.error \
+    test/test027.compil.error \
+    test/test026.test \
+    test/test026.expected

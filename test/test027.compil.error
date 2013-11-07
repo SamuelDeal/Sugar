@@ -1,0 +1,4 @@
+test/test027.test:2:7: error: syntax error, unexpected UNKNOWN_TOKEN, expecting TOK_END_INSTR
+echo 6 $ + 7
+       ^
+

@@ -9,21 +9,21 @@ echo c
 if a == 5 and a < 6 :
 	echo 5
 else
-	echo 6 $
+	echo 6
 
 Int b = 6	
 if a == 5 && a < b
 	echo 7
 else:
 	echo 8
-	$
+	
 if a == 5 or a == b:
 	echo 9
 else :
 	echo 10
-	$
+	
 
-if a == 4 || a > b $
+if a == 4 || a > b 
 	echo 11
 else 
 	echo 12

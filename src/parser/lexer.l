@@ -486,10 +486,11 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 }
 
 <lex_state_unstack>{
-    "\r\n"           {
+    "\r\n"              {
         yyless(1);
     }
-    [\r\n]          {
+
+    [\r\n]              {
         yyless(0);
         if(yyget_extra(yyscanner)->tokens.empty()){
             lexPopState(yyscanner);

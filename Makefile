@@ -82,31 +82,74 @@ test_sugar: cleartests sugar
 	@for t in $(TESTS); do \
 		test=$$(echo "$$t" | sed "s/\\.\\/test\\///"); \
 		echo -n "  $$test:"; \
-		./sugar "test/$$test.test" > "test/results/$$test.sugar.output" 2> /dev/null && \
-		diff --strip-trailing-cr "test/results/$$test.sugar.output" "test/$$test.expected" > /dev/null && \
-		/bin/echo -e "\e[0;32m ok \033[m" || /bin/echo -e "\e[1;31m fail \033[m"; \
-	done
+		./sugar "test/$$test.test" > "test/results/$$test.sugar.output" 2> /dev/null; \
+		sugar_result=$$?; \
+		if [ -e "test/$$test.compil.error" ]; then  \
+			if [ "$$sugar_result" -eq 0 ]; then \
+				/bin/echo -e "\e[1;31m fail \033[m"; \
+			else \
+				diff --strip-trailing-cr "test/results/$$test.sugar.output" "test/$$test.compil.error" > /dev/null && /bin/echo -e "\e[0;32m ok \033[m" || /bin/echo -e "\e[1;31m fail \033[m"; \
+			fi; \
+		else \
+			if [ "$$sugar_result" -ne 0 ]; then \
+				/bin/echo -e "\e[1;31m fail \033[m"; \
+			else \
+				diff --strip-trailing-cr "test/results/$$test.sugar.output" "test/$$test.expected" > /dev/null && /bin/echo -e "\e[0;32m ok \033[m" || /bin/echo -e "\e[1;31m fail \033[m"; \
+			fi; \
+		fi; \
+	done \
 	
 test_sugari: cleartests sugari
 	@echo "Testing sugari:"
 	@for t in $(TESTS); do \
 		test=$$(echo "$$t" | sed "s/\\.\\/test\\///"); \
 		echo -n "  $$test:"; \
-		./sugari "test/$$test.test" > "test/results/$$test.sugari.output" 2> /dev/null && \
-		diff --strip-trailing-cr "test/results/$$test.sugari.output" "test/$$test.expected" > /dev/null && \
-		/bin/echo -e "\e[0;32m ok \033[m" || /bin/echo -e "\e[1;31m fail \033[m"; \
-	done
+		./sugari "test/$$test.test" > "test/results/$$test.sugari.output" 2> /dev/null; \
+		sugari_result=$$?; \
+		if [ -e "test/$$test.interpret.error" ]; then  \
+			if [ "$$sugari_result" -eq 0 ]; then \
+				/bin/echo -e "\e[1;31m fail \033[m"; \
+			else \
+				diff --strip-trailing-cr "test/results/$$test.sugari.output" "test/$$test.interpret.error" > /dev/null && /bin/echo -e "\e[0;32m ok \033[m" || /bin/echo -e "\e[1;31m fail \033[m"; \
+			fi; \
+		else \
+			if [ "$$sugari_result" -ne 0 ]; then \
+				/bin/echo -e "\e[1;31m fail \033[m"; \
+			else \
+				diff --strip-trailing-cr "test/results/$$test.sugari.output" "test/$$test.expected" > /dev/null && /bin/echo -e "\e[0;32m ok \033[m" || /bin/echo -e "\e[1;31m fail \033[m"; \
+			fi; \
+		fi; \
+	done \
 
 test_sugarc: cleartests sugarc
 	@echo "Testing sugarc:"
 	@for t in $(TESTS); do \
 		test=$$(echo "$$t" | sed "s/\\.\\/test\\///"); \
 		echo -n "  $$test:"; \
-		./sugarc "test/$$test.test" "test/results/$$test.sugarc.exec" > /dev/null 2> /dev/null && \
-		test/results/$$test.sugarc.exec > "test/results/$$test.sugarc.output" && \
-		diff --strip-trailing-cr "test/results/$$test.sugarc.output" "test/$$test.expected" > /dev/null && \
-		/bin/echo -e "\e[0;32m ok \033[m" || /bin/echo -e "\e[1;31m fail \033[m"; \
-	done
+		if [ -e "test/$$test.compil.error" ]; then  \
+			./sugarc "test/$$test.test" "test/results/$$test.sugarc.exec" > "test/results/$$test.sugarc.output" 2> /dev/null; \
+			sugarc_result=$$?; \
+			if [ "$$sugarc_result" -eq 0 ]; then \
+				/bin/echo -e "\e[1;31m fail \033[m"; \
+			else \
+				diff --strip-trailing-cr "test/results/$$test.sugarc.output" "test/$$test.compil.error" > /dev/null && /bin/echo -e "\e[0;32m ok \033[m" || /bin/echo -e "\e[1;31m fail \033[m"; \
+			fi; \
+		else \
+			./sugarc "test/$$test.test" "test/results/$$test.sugarc.exec" > /dev/null 2> /dev/null; \
+			sugarc_result=$$?; \
+			if [ "$$sugarc_result" -ne 0 ]; then \
+				/bin/echo -e "\e[1;31m fail \033[m"; \
+			else \
+				test/results/$$test.sugarc.exec > "test/results/$$test.sugarc.output"; \
+				sugarc_result=$$?; \
+				if [ "$$sugarc_result" -ne 0 ]; then \
+					/bin/echo -e "\e[1;31m fail \033[m"; \
+				else \
+					diff --strip-trailing-cr "test/results/$$test.sugarc.output" "test/$$test.expected" > /dev/null && /bin/echo -e "\e[0;32m ok \033[m" || /bin/echo -e "\e[1;31m fail \033[m"; \
+				fi; \
+			fi; \
+		fi; \
+	done \
 
 tests: test_sugar test_sugari test_sugarc	
 
