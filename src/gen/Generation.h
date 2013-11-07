@@ -10,6 +10,7 @@
 #include "../core/Type.h"
 #include "../utils/config_checked.h"
 #include "../utils/Getter.h"
+#include "../parser/parser.hpp"
 
 namespace llvm {
     class Module;
@@ -58,9 +59,12 @@ public:
 
     llvm::Function* getInternalFunction(const std::string &name);
     void addInternalFunction(const std::string &name, utils::Getter<llvm::Function*>);
+    void addError(const std::string &error, YYLTYPE *location);
+    bool maxErrorCountReached() const;
 
 protected:
     std::map<const std::string, utils::Getter<llvm::Function*> > _internalFunctions;
+    unsigned int _errorCount;
 };
 
 } // namespace gen

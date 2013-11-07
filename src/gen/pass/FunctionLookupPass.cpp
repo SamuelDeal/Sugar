@@ -28,12 +28,16 @@ bool FunctionLookupPass::parse(ast::Node *node, ast::Assignment *data, Generatio
 
 bool FunctionLookupPass::parse(ast::Node *node, ast::Block *data, Generation &gen) {
     std::list<ast::Node*>::const_iterator it;
+    bool succeed = true;
     for (it = data->stmts->begin(); it != data->stmts->end() && !gen.scope->isReturnReach(); it++) {
         if(!parseNode(*it, gen)){
-            return false;
+            succeed = false;
+            if(gen.maxErrorCountReached()){
+                return false;
+            }
         }
     }
-    return true;
+    return succeed;
 }
 
 bool FunctionLookupPass::parse(ast::Node *node, ast::Comparison *data, Generation &gen) {
@@ -48,31 +52,28 @@ bool FunctionLookupPass::parse(ast::Node *node, ast::FunctionCall *data, Generat
     return true;
 }
 
-/*bool FunctionLookupPass::parse(ast::Node *node, ast::FunctionDeclaration *data, Generation &gen) {
-    return true;
-}*/
-
 bool FunctionLookupPass::parse(ast::Node *node, ast::FunctionDeclaration *data, Generation &gen) {
     Type *returnType = gen.scope->getType(*data->getType()->name);
     if(NULL == returnType){
-        std::cout << "Unknown type " << *data->getType()->name << std::endl;
+        gen.addError("unknown type " + *data->getType()->name, &data->type->yylloc);
+        gen.addError("invalid function declaration", &node->yylloc);
         return false;
     }
 
     std::list<ast::Node*>::const_iterator it;
     std::list<const Type*> types;
     for (it = data->arguments->begin(); it != data->arguments->end(); it++) {
-        Type *argType = gen.scope->getType(*((ast::ArgumentDeclaration*)(*it)->data)->getType()->name);
+        std::string *typeName = ((ast::ArgumentDeclaration*)(*it)->data)->getType()->name;
+        Type *argType = gen.scope->getType(*typeName);
         if(argType == NULL){
-            std::cout << "Unknown type " << *((ast::ArgumentDeclaration*)(*it)->data)->getType()->name << std::endl;
+            gen.addError("unknown type " + *typeName, &((ast::ArgumentDeclaration*)(*it)->data)->type->yylloc);
+            gen.addError("invalid function declaration", &node->yylloc);
             return false;
         }
         types.push_back(argType);
     }
 
-
     Function *fn = new Function(*data->getId()->name, gen.scope->getType(*data->getType()->name), types, node, [=, &gen] () -> llvm::Function* {
-        Type *returnType = gen.scope->getType(*data->getType()->name);
         std::vector<llvm::Type*> argTypes;
         std::list<ast::Node*>::const_iterator it;
         for (it = data->arguments->begin(); it != data->arguments->end(); it++) {
@@ -85,14 +86,7 @@ bool FunctionLookupPass::parse(ast::Node *node, ast::FunctionDeclaration *data, 
         return function;
     });
 
-
     gen.scope->addFunction(fn);
-    /*
-#if DEBUG_GENERATOR
-    std::cerr << "Creating function: " << *data->getId()->name << std::endl;
-#endif
-    //node->setValue(function);
-    */
     return true;
 }
 

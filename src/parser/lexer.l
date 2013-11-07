@@ -62,7 +62,7 @@ void yyerror(YYLTYPE *locp, sugar::parser::LexerContext *lexerCtx, const char *e
     }
 
     if(isatty(fileno(stdout)) == 1){
-        std::cout << "\x1b[1m\x1b[37m"  << (lexerCtx->filename == NULL ? "(stdin)" : *lexerCtx->filename) << ":" << locp->first_line;
+        std::cout << "\x1b[1m\x1b[37m"  << (locp->filename == NULL ? "(stdin)" : *locp->filename) << ":" << locp->first_line;
         std::cout << ":" << locp->first_column << ": \x1b[1m\x1b[31m" << "error: \x1b[1m\x1b[37m" << err << "\x1b[0m" << std::endl;
         std::cout << locp->currentLine << std::endl;
         for(unsigned int i = 0; i < locp->first_column; i++) {
@@ -72,7 +72,7 @@ void yyerror(YYLTYPE *locp, sugar::parser::LexerContext *lexerCtx, const char *e
     }
     else{
 #endif
-        std::cout << (lexerCtx->filename == NULL ? "(stdin)" : *lexerCtx->filename) << ":" << locp->first_line;
+        std::cout << (locp->filename == NULL ? "(stdin)" : *locp->filename) << ":" << locp->first_line;
         std::cout << ":" << locp->first_column << ": error: " << err << std::endl;
         std::cout << locp->currentLine << std::endl;
         for(unsigned int i = 0; i < locp->first_column; i++) {

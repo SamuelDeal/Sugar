@@ -4,6 +4,9 @@
 
 #include <iostream>
 #include "../utils/Getter.tpl.h"
+#include "../parser/parser.hpp"
+
+void yyerror(YYLTYPE *locp, sugar::parser::LexerContext *lexerCtx, const char *err);
 
 namespace sugar {
 namespace gen {
@@ -25,6 +28,7 @@ Generation::Generation() :
     scope->addType(&intType);
     scope->addType(&floatType);
     scope->addType(&voidType);
+    _errorCount = 0;
 }
 
 Generation::~Generation(){
@@ -89,6 +93,17 @@ llvm::Function* Generation::getInternalFunction(const std::string &name){
 
 void Generation::addInternalFunction(const std::string &name, utils::Getter<llvm::Function*> getter){
     _internalFunctions.insert(std::make_pair(name, getter));
+}
+
+void Generation::addError(const std::string &error, YYLTYPE *location){
+    if(!maxErrorCountReached()){
+        yyerror(location, NULL, error.c_str());
+    }
+    ++_errorCount;
+}
+
+bool Generation::maxErrorCountReached() const {
+    return _errorCount > MAX_ERROR_COUNT;
 }
 
 } // namespace gen
