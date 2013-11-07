@@ -192,6 +192,7 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 
 <lex_state_mlcomment>{
     \*+\/          {
+        yylloc_param->first_column += yyleng;
         if(yyget_extra(yyscanner)->commentStartCount < yyleng){
             lexPopState(yyscanner);
         }
@@ -211,6 +212,7 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
     }
 
     . {
+        ++yylloc_param->first_column;
     }
 }
 
@@ -272,6 +274,7 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 
 <lex_state_rbrace>{
     [ \t]* { /* ignoring spaces */
+        yylloc_param->first_column += yyleng;
     }
 
     "\r\n" {
@@ -325,6 +328,7 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
     }
 
     " "+            {
+        yylloc_param->first_column += yyleng;
         LOG_LEXER("HERE 1 !!! %d", yyget_extra(yyscanner)->indentContext.style);
         if(yyget_extra(yyscanner)->indentContext.style == IndentInfo::UNDEFINED){
             LOG_LEXER("HERE 1.1 !!! %d", yyget_extra(yyscanner)->indentContext.style);
@@ -347,6 +351,7 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
     }
 
     \t+             {
+        yylloc_param->first_column += yyleng;
         LOG_LEXER("HERE 2 !!!");
         if(yyget_extra(yyscanner)->indentContext.style == IndentInfo::UNDEFINED){
             yyget_extra(yyscanner)->indentContext.style = IndentInfo::TAB;
@@ -524,10 +529,11 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
     }
 #endif
     }
-    [\t ]+                      { /*yylloc_param->first_column += yyleng;*/ }
-    "//"                        { lexPushState(lex_state_skipline, yyscanner); }
-    \#[ \t]                     { lexPushState(lex_state_skipline, yyscanner); }
+    [\t ]+                      { yylloc_param->first_column += yyleng; }
+    "//"                        { yylloc_param->first_column += yyleng; lexPushState(lex_state_skipline, yyscanner); }
+    \#[ \t]                     { yylloc_param->first_column += yyleng; lexPushState(lex_state_skipline, yyscanner); }
     \/\*+                       {
+        yylloc_param->first_column += yyleng;
         lexPushState(lex_state_mlcomment, yyscanner);
         yyget_extra(yyscanner)->commentStartCount = yyleng -1;
     }
@@ -574,6 +580,7 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
         return TLBRACE;
     }
     "}"                         {
+        ++yylloc_param->first_column;
         LOG_LEXER(" ## adding TOK_END_INSTR (line %d)", __LINE__);
         yyget_extra(yyscanner)->tokens.push(TOK_END_INSTR);
         if(yyget_extra(yyscanner)->indents.top()->start != -1){
