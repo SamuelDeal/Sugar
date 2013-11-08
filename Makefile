@@ -1,4 +1,5 @@
-all: sugar sugari sugarc clean_tmp
+# all: sugar sugari sugarc clean_tmp
+all: sugar sugari sugarc
 
 .PHONY: all clean clear clean_tmp deps test tests cleartests test_sugar test_sugari test_sugarc
 

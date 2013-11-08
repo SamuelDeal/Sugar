@@ -11,7 +11,7 @@ std::list<const Type *> createList(Type* fromType) {
 
 Cast::Cast(Type* fromType, Type* toType,
                    std::function<llvm::Function * ()> fnDeclGenerator,
-                   std::function<void (llvm::Function*)> fnImplGenerator):
+                   std::function<bool (llvm::Function*)> fnImplGenerator):
     AbstractFunction(fnDeclGenerator, fnImplGenerator, toType, createList(fromType))
 {}
 

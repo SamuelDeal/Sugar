@@ -53,11 +53,12 @@ const char * const  state_names[] = {
 
 #define YY_USER_INIT \
     yylloc_param->first_line = 1; \
-    yylloc_param->first_column = 0;
+    yylloc_param->first_column = 0; \
+    yylloc_param->filename = NULL;
 
 void yyerror(YYLTYPE *locp, sugar::parser::LexerContext *lexerCtx, const char *err){
 #if SHELL_USE_COLOR
-    if(lexerCtx->interactive && lexerCtx->errorCount > 0){
+    if(lexerCtx != NULL && lexerCtx->interactive && lexerCtx->errorCount > 0){
         return;
     }
 
@@ -103,12 +104,7 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 
 #endif
 
-//yylloc_param->first_line = 1;
-//yylloc_param->first_column = 0;
-
-
 %}
-
 
 
 /* flex states */
@@ -137,6 +133,7 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 
 %%
     yylloc_param->first_column += yyleng;
+    yylloc_param->filename = yyget_extra(yyscanner)->filename;
     if(yyget_extra(yyscanner)->eof){
         if(yyget_extra(yyscanner)->tokens.empty()) {
             LOG_LEXER("End of file");
@@ -524,6 +521,9 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
 
     [\r\n]                     {
         ++yylloc_param->first_line;
+        if(yyget_extra(yyscanner)->errorCount > 0){
+            yyget_extra(yyscanner)->hasError = true;
+        }
         #if INTERACTIVE_INPUT
             if(yyget_extra(yyscanner)->interactive){
                 lexPushState(lex_state_saveline, yyscanner);

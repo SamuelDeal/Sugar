@@ -84,7 +84,8 @@ SOURCES += \
     src/ast/FunctionImplementation.cpp \
     src/core/LanguageError.cpp \
     src/ast/NodeData.cpp \
-    src/utils/utils.cpp
+    src/utils/utils.cpp \
+    src/parser/ProgramNode.cpp
 
 HEADERS += \
     codegen.h \
@@ -174,7 +175,8 @@ HEADERS += \
     src/utils/Getter.h \
     src/utils/Getter.tpl.h \
     src/utils/config_checked.h \
-    src/utils/utils.h
+    src/utils/utils.h \
+    src/parser/ProgramNode.h
 
 OTHER_FILES += \
     parser.y \

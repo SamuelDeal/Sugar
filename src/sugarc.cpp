@@ -1,8 +1,7 @@
 #include <iostream>
 #include <stdio.h>
 
-#include "ast/Node.h"
-#include "ast/Block.h"
+#include "parser/ProgramNode.h"
 #include "parser/BatchParser.h"
 #include "gen/Compiler.h"
 
@@ -30,8 +29,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    YYLTYPE locStart;
-    ast::Node programStmts(ast::Node::eBlock, new ast::Block(), locStart);
+    parser::ProgramNode programStmts(filename);
     parser::BatchParser parser;
     if(!parser.parse(file, filename, programStmts)){
         return 1;

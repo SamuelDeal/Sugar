@@ -31,13 +31,15 @@ namespace ast {
 
 namespace parser {
 
-typedef void (*stmtFunction)(ast::Node *programStmts, ast::Node *stmt);
+class ProgramNode;
+
+typedef void (*stmtFunction)(ProgramNode *programStmts, ast::Node *stmt);
 
 
 class LexerContext
 {
 public:
-    LexerContext(ast::Node *programStmts, const std::string *filename, bool interactive, stmtFunction callback);
+    LexerContext(ProgramNode *programStmts, const std::string *filename, bool interactive, stmtFunction callback);
     ~LexerContext();
     void onProgramStmt(ast::Node *stmt);
 
@@ -51,9 +53,10 @@ public:
     bool eof;
     void *scanner;
     bool interactive;
-    ast::Node *programStmts;
+    ProgramNode *programStmts;
     const std::string *filename;
     unsigned int errorCount;
+    bool hasError;
 
 protected:
     stmtFunction _callback;

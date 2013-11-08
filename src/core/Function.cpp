@@ -7,7 +7,7 @@ namespace core {
 
 Function::Function(const std::string &name, Type* returnType, const std::list<const Type *> &argTypes,
                    std::function<llvm::Function * ()> fnDeclGenerator,
-                   std::function<void (llvm::Function*)> fnImplGenerator):
+                   std::function<bool (llvm::Function*)> fnImplGenerator):
     AbstractFunction(fnDeclGenerator, fnImplGenerator, returnType, argTypes)
 {
     _name = name;

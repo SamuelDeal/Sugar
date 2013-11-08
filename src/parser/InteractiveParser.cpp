@@ -7,7 +7,7 @@
 #include "../utils/config_checked.h"
 #define INTERACTIVE_INPUT 1
 #include "lexer.inter.hpp"
-
+#include "ProgramNode.h"
 
 
 #if LIBREADLINE
@@ -162,7 +162,7 @@ InteractiveParser::InteractiveParser()
 {
 }
 
-bool InteractiveParser::parse(FILE *file, const std::string *filename, ast::Node &programStmts, stmtFunction callback) const {
+bool InteractiveParser::parse(FILE *file, const std::string *filename, parser::ProgramNode &programStmts, stmtFunction callback) const {
     yydebug = DEBUG_PARSER;
 
     yyscan_t scanner;
@@ -183,6 +183,10 @@ bool InteractiveParser::parse(FILE *file, const std::string *filename, ast::Node
         rl_instream = stdin;
     }
 #endif
+    if(interactive){
+        std::cout << "Welcome to the sugar interactive shell" << std::endl;
+        std::cout << "Use 'quit' or 'exit' to quit this shell" << std::endl;
+    }
 
     yy_push_state(lex_state_newline, scanner);
     yyset_in( file, scanner );
@@ -190,7 +194,7 @@ bool InteractiveParser::parse(FILE *file, const std::string *filename, ast::Node
 
     yylex_destroy(scanner);
     fclose(file);
-    return succeed && (interactive || (lexerCtx.errorCount == 0));
+    return succeed && (interactive || !lexerCtx.hasError);
 }
 
 } // namespace parser

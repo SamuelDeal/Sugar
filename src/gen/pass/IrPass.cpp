@@ -34,7 +34,7 @@ IrPass::IrPass()
 bool IrPass::parse(ast::Node *node, ast::ArgumentDeclaration *data, Generation &gen) {
     Type *type = gen.scope->getType(*data->getType()->name);
     if(type == NULL){
-        std::cout << "Unknown type " << *data->getType()->name << std::endl;
+        gen.addError("unknown type " + *data->getType()->name, &data->type->yylloc);
         return false;
     }
     node->setType(*type);
@@ -45,14 +45,6 @@ bool IrPass::parse(ast::Node *node, ast::ArgumentDeclaration *data, Generation &
     llvm::AllocaInst *alloc = new llvm::AllocaInst(*type, data->getId()->name->c_str(), *scope);
     Variable *var = new Variable(*data->getId()->name, *type, alloc);
     scope->addVar(var);
-/*    if(data->defaultValue != NULL){
-#if DEBUG_GENERATOR
-        std::cerr << "Assigning value to argument declaration " << type->getName() << " " << *data->getId()->name << std::endl;
-#endif
-        ast::Node *assign = ast::Assignment::create(data->id, data->defaultValue, node->yylloc);
-        parseNode(assign, gen);
-        assign->
-    }*/
     node->setRef(*var);
     node->setValue(alloc);
     return true;
@@ -63,20 +55,17 @@ bool IrPass::parse(ast::Node *node, ast::Assignment *data, Generation &gen) {
     std::cerr << "Creating assignment" << std::endl;
 #endif
     parseNode(data->left, gen);
-    /*core::Variable *var = gen.scope->getVar(*data->getLeft()->name);
-    if(var == NULL){
-        std::cout << "undeclared variable " << *data->getLeft()->name << std::endl;
-        return NULL;
-    }*/
     llvm::Value* leftRef = data->left->getRef();
     if(leftRef == NULL){
-        std::cout << "Left part is not assignable" << std::endl;
-        return false; //added
+        gen.addError("left part is not assignable", &data->left->yylloc);
+        return false;
     }
-    parseNode(data->right, gen);
+    if(!parseNode(data->right, gen)){
+        return false;
+    }
     if(*data->right->getType() != *data->left->getType()){
-        std::cout << "Uncompatible types in assigment  " << data->right->getType()->getName()
-                  << " to " << data->left->getType()->getName() << std::endl;
+        gen.addError("uncompatible types in assigment", &data->left->yylloc,
+                     data->right->getType()->getName() + " to " + data->left->getType()->getName());
         return false;
     }
     gen.builder.CreateStore(data->right->getValue(), leftRef);
@@ -85,6 +74,7 @@ bool IrPass::parse(ast::Node *node, ast::Assignment *data, Generation &gen) {
 }
 
 bool IrPass::parse(ast::Node *node, ast::Block *data, Generation &gen) {
+    bool succeed = true;
     std::list<ast::Node*>::const_iterator it;
     llvm::Value *lastValue = NULL;
     ast::Node *lastStatement = NULL;
@@ -93,12 +83,23 @@ bool IrPass::parse(ast::Node *node, ast::Block *data, Generation &gen) {
         std::cerr << "Generating code for statement" << std::endl;
 #endif
         lastStatement = *it;
-        parseNode(lastStatement, gen);
-        lastValue = (*it)->getValue();
+        if(parseNode(lastStatement, gen)){
+            lastValue = (*it)->getValue();
+        }
+        else{
+            succeed = false;
+            if(gen.maxErrorCountReached()){
+                return false;
+            }
+        }
     }
 #if DEBUG_GENERATOR
     std::cerr << "Creating block" << std::endl;
 #endif
+    if(!succeed){
+        return false;
+    }
+
     if(lastValue == NULL || lastStatement == NULL || lastStatement->getType() == &gen.voidType){
         node->setType(gen.voidType);
     }
@@ -123,14 +124,16 @@ bool IrPass::parse(ast::Node *node, ast::Comparison *data, Generation &gen) {
         args->push_back(left);
         args->push_back(*it);
         ast::Node *operatorNode = ast::Operator::create(*opIt, args, (*it)->yylloc);
-        parseNode(operatorNode, gen);
+        if(!parseNode(operatorNode, gen)){
+            return false;
+        }
         valueComp = operatorNode->getValue();
         if(valueComp == NULL){
-            std::cout << "comparison failed" << std::endl;
+            gen.addError("invalid operation", &operatorNode->yylloc);
             return false;
         }
         if(*operatorNode->getType() != gen.boolType){
-            std::cout << "comparison is not boolean" << std::endl;
+            gen.addError("comparison is not boolean", &operatorNode->yylloc);
             return false;
         }
         ((ast::Operator*)(operatorNode->data))->args->clear();
@@ -163,7 +166,7 @@ bool IrPass::parse(ast::Node *node, ast::Constant *data, Generation &gen) {
             node->setValue(llvm::ConstantFP::get(gen.floatType, data->value.floatValue));
             break;
         default:
-            std::cout << "Unknown constant type" << std::endl;
+            gen.addError("unknown constant type", &node->yylloc);
             return false;
     }
     return true;
@@ -180,12 +183,15 @@ bool IrPass::parse(ast::Node *node, ast::FunctionCall *data, Generation &gen) {
     std::list<ast::Node*>::const_iterator it;
     std::list<const Type *> types;
     for (it = data->args->begin(); it != data->args->end(); it++) {
-        parseNode(*it, gen);
+        if(!parseNode(*it, gen)){
+            gen.addError("bad argument, function call abort", &(*it)->yylloc);
+            return false;
+        }
         nodeArgs.push_back(*it);
         args.push_back((*it)->getValue());
         const Type* argType = (*it)->getType();
         if(argType == NULL){
-            std::cout << "Parsing failed " << std::endl;
+            gen.addError("bad argument, no type detected", &(*it)->yylloc);
             return false;
         }
         else {
@@ -196,7 +202,7 @@ bool IrPass::parse(ast::Node *node, ast::FunctionCall *data, Generation &gen) {
     std::list<Function*> functions = gen.scope->getFuncs(*functionName);
 
     if (functions.empty()){
-        std::cout << "undeclared function " << *functionName << std::endl;
+        gen.addError("undeclared function " + *functionName, &data->functionName->yylloc);
         return false;
     }
     else{
@@ -211,6 +217,9 @@ bool IrPass::parse(ast::Node *node, ast::FunctionCall *data, Generation &gen) {
                 }
                 else{
                     llvm::Function *irFunction = *func;
+                    if(irFunction == NULL){ //function parsing failed
+                        return false;
+                    }
                     call = gen.builder.CreateCall(irFunction, makeArrayRef(args));
                 }
 #if DEBUG_GENERATOR
@@ -220,46 +229,17 @@ bool IrPass::parse(ast::Node *node, ast::FunctionCall *data, Generation &gen) {
                 return true;
             }
         }
-        std::cout << "no function match given arguments" << std::endl;
+        gen.addError("no function match given arguments", &data->functionName->yylloc);
         return false;
     }
 }
 
 bool IrPass::parse(ast::Node *node, ast::FunctionDeclaration *data, Generation &gen) {
     core::Function* fn = gen.scope->getByDeclarationNode(node);
-
-
-
-    /*
-    if(NULL == returnType){
-        std::cout << "Unknown type " << *data->getType()->name << std::endl;
-        return;
+    if(fn == NULL){
+        return false;
     }
-
-    std::list<ast::Node*>::const_iterator it;
-    std::list<const Type*> types;
-    for (it = data->arguments->begin(); it != data->arguments->end(); it++) {
-        Type *argType = gen.scope->getType(*((ast::ArgumentDeclaration*)(*it)->data)->getType()->name);
-        if(argType == NULL){
-            std::cout << "Unknown type " << *((ast::ArgumentDeclaration*)(*it)->data)->getType()->name << std::endl;
-            return;
-        }
-        types.push_back(argType);
-    }
-
-
-    Function *fn = new Function(*data->getId()->name, gen.scope->getType(*data->getType()->name), types, [=, &gen] () -> llvm::Function* {
-        Type *returnType = gen.scope->getType(*data->getType()->name);
-        std::vector<llvm::Type*> argTypes;
-        std::list<ast::Node*>::const_iterator it;
-        for (it = data->arguments->begin(); it != data->arguments->end(); it++) {
-            Type *argType = gen.scope->getType(*((ast::ArgumentDeclaration*)(*it)->data)->getType()->name);
-            argTypes.push_back(*argType);
-        }
-
-        llvm::FunctionType *ftype = llvm::FunctionType::get(*returnType, llvm::makeArrayRef(argTypes), false);
-        llvm::Function *function = llvm::Function::Create(ftype, llvm::GlobalValue::InternalLinkage, data->getId()->name->c_str(), gen.module);*/
-    fn->setImplementationGenerator([=, &gen] (llvm::Function *function) -> void {
+    fn->setImplementationGenerator([=, &gen] (llvm::Function *function) -> bool {
         Type *returnType = gen.scope->getType(*data->getType()->name);
         llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", function, 0);
 
@@ -267,19 +247,35 @@ bool IrPass::parse(ast::Node *node, ast::FunctionDeclaration *data, Generation &
         llvm::Value* argumentValue;
         gen.pushBlock(bblock, ScopeType::Function);
         std::list<ast::Node*>::const_iterator it;
+        bool succeed = true;
         for (it = data->arguments->begin(); it != data->arguments->end(); it++) {
-            parseNode(*it, gen);
+            if(!parseNode(*it, gen)){
+                succeed = false;
+                if(gen.maxErrorCountReached()){
+                    gen.popBlock();
+                    return false;
+                }
+            }
             argumentValue = argsValues++;
             std::string *argumentName = ((ast::ArgumentDeclaration*)((*it)->data))->getId()->name;
             argumentValue->setName(argumentName->c_str());
             gen.builder.CreateStore(argumentValue, *gen.scope->getVar(*argumentName));
         }
+        if(!succeed){
+            gen.popBlock();
+            return false;
+        }
 
-        parseNode(data->impl, gen);
+        if(!parseNode(data->impl, gen)){
+            gen.popBlock();
+            return false;
+        }
         llvm::Value *blockReturnValue = data->impl->getValue();
         if(data->impl->getType() != returnType){
-            std::cout << "Function type mismatch with declaration !"  << std::endl;
-            return;
+            gen.addError("function type mismatch with declaration", &data->id->yylloc,
+                         "declared type: "+returnType->getName()+", effective return: "+data->impl->getType()->getName());
+            gen.popBlock();
+            return false;
         }
 
         if(*returnType != gen.voidType){
@@ -290,11 +286,8 @@ bool IrPass::parse(ast::Node *node, ast::FunctionDeclaration *data, Generation &
         }
 
         gen.popBlock();
+        return true;
     });
-/*#if DEBUG_GENERATOR
-    std::cerr << "Creating function: " << *data->getId()->name << std::endl;
-#endif*/
-    //node->setValue(function);*/
     return true;
 }
 
@@ -302,14 +295,27 @@ bool IrPass::parse(ast::Node *node, ast::FunctionImplementation *data, Generatio
     std::list<ast::Node*>::const_iterator it;
     llvm::Value *lastValue = NULL;
     ast::Node *lastStatement = NULL;
+    bool succeed = true;
     for (it = data->stmts->begin(); it != data->stmts->end() && !gen.scope->isReturnReach(); it++) {
 #if DEBUG_GENERATOR
         std::cerr << "Generating code for statement" << std::endl;
 #endif
         lastStatement = *it;
-        parseNode(lastStatement, gen);
-        lastValue = lastStatement->getValue();
+        if(parseNode(lastStatement, gen)){
+            lastValue = (*it)->getValue();
+        }
+        else{
+            succeed = false;
+            if(gen.maxErrorCountReached()){
+                return false;
+            }
+        }
     }
+
+    if(!succeed){
+        return false;
+    }
+
 #if DEBUG_GENERATOR
     std::cerr << "Creating block" << std::endl;
 #endif
@@ -331,16 +337,7 @@ bool IrPass::parse(ast::Node *node, ast::Identifier *data, Generation &gen) {
     if(var != NULL){
         node->setType(var->getType());
         core::Scope *scope = gen.scope;
-
-        std::cerr << "Getting var data 1 " << std::endl;
-        std::cerr << var << ", " << *var << std::endl;
-        std::cerr << scope << ", " << *scope << std::endl;
-
         node->setValue(utils::Getter<llvm::Value*>([=] {
-            std::cerr << "Getting var data 2 " << std::endl;
-            std::cerr << var << ", " << *var << std::endl;
-            std::cerr << scope << ", " << *scope << std::endl;
-            //std::cerr << var->getName() << ", " << var->toString() << std::endl;
             return new llvm::LoadInst(*var, "", false, *scope);
         }));
         node->setRef(*var);
@@ -348,7 +345,7 @@ bool IrPass::parse(ast::Node *node, ast::Identifier *data, Generation &gen) {
     else{
         std::list<Function *> functions = gen.scope->getFuncs(*data->name);
         if (functions.empty()){
-            std::cout << "undeclared variable or function " << *data->name << std::endl;
+            gen.addError("undeclared variable or function " + *data->name, &node->yylloc);
             return false;
         }
         else{
@@ -362,7 +359,11 @@ bool IrPass::parse(ast::Node *node, ast::Identifier *data, Generation &gen) {
                         call = (*it)->getNative()(args, gen);
                     }
                     else{
-                        call = gen.builder.CreateCall(**it);
+                        llvm::Function *irFunction = **it;
+                        if(irFunction == NULL){ //function parsing failed
+                            return false;
+                        }
+                        call = gen.builder.CreateCall(irFunction);
                     }
 #if DEBUG_GENERATOR
                     std::cerr << "Creating method call " << *data->name << std::endl;
@@ -371,7 +372,7 @@ bool IrPass::parse(ast::Node *node, ast::Identifier *data, Generation &gen) {
                     return true;
                 }
             }
-            std::cout << "undeclared variable or function " << *data->name << std::endl;
+            gen.addError("undeclared variable or function " + *data->name, &node->yylloc);
             return false;
         }
     }
@@ -381,7 +382,9 @@ bool IrPass::parse(ast::Node *node, ast::Identifier *data, Generation &gen) {
 
 
 bool IrPass::parse(ast::Node *node, ast::IfExpression *data, Generation &gen) {
-    parseNode(data->cond, gen);
+    if(!parseNode(data->cond, gen)){
+        return false;
+    }
     llvm::Value *condV = data->cond->getValue();
 
     llvm::Function *currentFunction = gen.builder.GetInsertBlock()->getParent();
@@ -405,7 +408,10 @@ bool IrPass::parse(ast::Node *node, ast::IfExpression *data, Generation &gen) {
     }
 
     gen.pushBlock(thenBB);
-    parseNode(data->thenBlk, gen);
+    if(!parseNode(data->thenBlk, gen)){
+        gen.popBlock();
+        return false;
+    }
     llvm::Value *thenValue = data->thenBlk->getValue();
     if(gen.scope->isReturnReach()){
         phi = false;
@@ -420,7 +426,10 @@ bool IrPass::parse(ast::Node *node, ast::IfExpression *data, Generation &gen) {
     if(data->elseBlk != NULL){
         currentFunction->getBasicBlockList().push_back(elseBB);
         gen.pushBlock(elseBB);
-        parseNode(data->elseBlk, gen);
+        if(!parseNode(data->elseBlk, gen)){
+            gen.popBlock();
+            return false;
+        }
         elseValue = data->elseBlk->getValue();
         gen.builder.CreateBr(mergeBB);
         elseBB = gen.builder.GetInsertBlock();
@@ -472,7 +481,9 @@ bool IrPass::parse(ast::Node *node, ast::Operator *data, Generation &gen) {
     std::list<ast::Node*>::const_iterator it;
     std::list<const Type *> types;
     for (it = data->args->begin(); it != data->args->end(); it++) {
-        parseNode(*it, gen);
+        if(!parseNode(*it, gen)){
+            return false;
+        }
         nodeArgs.push_back(*it);
         args.push_back((*it)->getValue());
         types.push_back((*it)->getType());
@@ -487,7 +498,7 @@ bool IrPass::parse(ast::Node *node, ast::Operator *data, Generation &gen) {
     std::list<Operator*> operators = gen.scope->getOps(data->operatorId, data->before);
 
     if (operators.empty()){
-        std::cout << "undeclared operator" << std::endl;
+        gen.addError("unknown operator", &node->yylloc);
         return false;
     }
     else{
@@ -500,7 +511,11 @@ bool IrPass::parse(ast::Node *node, ast::Operator *data, Generation &gen) {
                     call = (*it)->getNative()(nodeArgs, gen);
                 }
                 else{
-                    call = gen.builder.CreateCall(**it, makeArrayRef(args));
+                    llvm::Function *irFunction = **it;
+                    if(irFunction == NULL){ //function parsing failed
+                        return false;
+                    }
+                    call = gen.builder.CreateCall(irFunction, makeArrayRef(args));
                 }
 #if DEBUG_GENERATOR
                 std::cerr << "Creating operator call " << std::endl;
@@ -509,13 +524,15 @@ bool IrPass::parse(ast::Node *node, ast::Operator *data, Generation &gen) {
                 return true;
             }
         }
-        std::cout << "no operator match given arguments : " <<  data->operatorId << std::endl;
+        gen.addError("no operator match given arguments", &node->yylloc);
         return false;
     }
 }
 
 bool IrPass::parse(ast::Node *node, ast::ReturnStmt *data, Generation &gen) {
-    parseNode(data->expression, gen);
+    if(!parseNode(data->expression, gen)){
+        return false;
+    }
     llvm::Value* returnExpr = gen.builder.CreateRet(data->expression->getValue());
     gen.scope->setReturnReach();
     node->setValue(returnExpr);
@@ -530,7 +547,7 @@ bool IrPass::parse(ast::Node *node, ast::TypeIdentifier *data, Generation &gen) 
 bool IrPass::parse(ast::Node *node, ast::VariableDeclaration *data, Generation &gen) {
     Type *type = gen.scope->getType(*data->getType()->name);
     if(type == NULL){
-        std::cout << "Unknown type " << *data->getType()->name << std::endl;
+        gen.addError("unknown type " + *data->getType()->name, &data->type->yylloc);
         return false;
     }
     node->setType(*type);
@@ -542,21 +559,10 @@ bool IrPass::parse(ast::Node *node, ast::VariableDeclaration *data, Generation &
         llvm::GlobalVariable *globalVar = new llvm::GlobalVariable(*gen.module, *type, false,
             llvm::GlobalValue::InternalLinkage, 0, *data->getId()->name);
         Variable *var = new Variable(*data->getId()->name, *type, globalVar);
-        std::cerr << "Setting global var data" << std::endl;
-        std::cerr << var << ", " << *var << std::endl;
-        std::cerr << scope << ", " << *scope << std::endl;
         globalVar->setInitializer(llvm::Constant::getNullValue(*type));
         scope->addVar(var);
-/*        if(data->assign != NULL){
-#if DEBUG_GENERATOR
-            std::cerr << "Assigning value to global variable declaration " << type->getName() << " " << data->getId()->name << std::endl;
-#endif
-            return parseNode(ast::Assignment::create(data->id, data->assign, node->yylloc), gen);
-        }*/
         node->setRef(*var);
         node->setValue(globalVar);
-        //lastGlobal = var;
-        //return var;
     }
     else { //local variable declaration
 #if DEBUG_GENERATOR
@@ -565,16 +571,6 @@ bool IrPass::parse(ast::Node *node, ast::VariableDeclaration *data, Generation &
         llvm::AllocaInst *alloc = new llvm::AllocaInst(*type, data->getId()->name->c_str(), *scope);
         Variable *var = new Variable(*data->getId()->name, *type, alloc);
         scope->addVar(var);
-        std::cerr << "Setting local var data" << std::endl;
-        std::cerr << var << ", " << *var << std::endl;
-        std::cerr << scope << ", " << *scope << std::endl;
-
-/*        if(data->assign != NULL){
-#if DEBUG_GENERATOR
-            std::cerr << "Assigning value to local variable declaration " << type->getName() << " " << *data->getId()->name << std::endl;
-#endif
-            return parseNode(ast::Assignment::create(data->id, data->assign, node->yylloc), gen);
-        }*/
         node->setRef(*var);
         node->setValue(alloc);
     }
@@ -599,14 +595,20 @@ bool IrPass::parse(ast::Node *node, ast::WhileStmt *data, Generation &gen) {
     gen.builder.CreateBr(data->testFirst ? condBB : loopBB);
     currentFunction->getBasicBlockList().push_back(condBB);
     gen.pushBlock(condBB);
-    parseNode(data->cond, gen);
+    if(!parseNode(data->cond, gen)){
+        gen.popBlock();
+        return false;
+    }
     llvm::Value *condV = data->cond->getValue();
     gen.builder.CreateCondBr(condV, loopBB, mergeBB);
     gen.popBlock();
 
     currentFunction->getBasicBlockList().push_back(loopBB);
     gen.pushBlock(loopBB);
-    parseNode(data->block, gen);
+    if(!parseNode(data->block, gen)){
+        gen.popBlock();
+        return false;
+    }
     if(!gen.scope->isReturnReach()){
         gen.builder.CreateBr(condBB);
     }

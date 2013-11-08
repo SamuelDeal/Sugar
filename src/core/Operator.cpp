@@ -7,7 +7,7 @@ namespace core {
 
 Operator::Operator(int operatorId, Type* returnType, const std::list<const Type *> &argTypes,
                    std::function<llvm::Function * ()> fnDeclGenerator,
-                   std::function<void (llvm::Function*)> fnImplGenerator):
+                   std::function<bool (llvm::Function*)> fnImplGenerator):
     AbstractFunction(fnDeclGenerator, fnImplGenerator, returnType, argTypes)
 {
     _operatorId = operatorId;
@@ -31,7 +31,7 @@ Operator::Operator(int operatorId, NativeFunction fn, Type* returnType, const st
 
 Operator::Operator(int operatorId, Type* returnType, const Type * type, bool before,
                    std::function<llvm::Function * ()> fnDeclGenerator,
-                   std::function<void (llvm::Function*)> fnImplGenerator):
+                   std::function<bool (llvm::Function*)> fnImplGenerator):
     AbstractFunction(fnDeclGenerator, fnImplGenerator, returnType, std::list<const Type*>(1, type))
 {
     _operatorId = operatorId;

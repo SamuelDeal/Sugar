@@ -12,6 +12,10 @@ namespace ast {
     class Node;
 }
 
+namespace parser {
+    class ProgramNode;
+}
+
 namespace gen {
 
 class Generation;
@@ -19,18 +23,18 @@ class Generation;
 class GeneratedCode
 {
 public:
-    GeneratedCode(llvm::Function *function, Generation *gen, ast::Node *block);
+    GeneratedCode(llvm::Function *function, Generation *gen, parser::ProgramNode *block);
     ~GeneratedCode();
 
     llvm::Function* getFunction() const;
     llvm::Module* getModule() const;
-    ast::Node* getBlock() const;
+    parser::ProgramNode * getBlock() const;
     Generation* getGeneration() const;
 
 protected:
     llvm::Function *_function;
     Generation *_generation;
-    ast::Node *_block;
+    parser::ProgramNode *_block;
 };
 
 } // namespace gen

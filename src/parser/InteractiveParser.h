@@ -14,13 +14,14 @@ namespace ast {
 
 namespace parser {
 
-typedef void (*stmtFunction)(ast::Node *programStmts, ast::Node *stmt);
+class ProgramNode;
+typedef void (*stmtFunction)(ProgramNode *programStmts, ast::Node *stmt);
 
 class InteractiveParser
 {
 public:
     InteractiveParser();
-    bool parse(FILE *file, const std::string *filename, ast::Node &programStmts, stmtFunction callback = NULL) const;
+    bool parse(FILE *file, const std::string *filename, ProgramNode &programStmts, stmtFunction callback = NULL) const;
 };
 
 } // namespace parser

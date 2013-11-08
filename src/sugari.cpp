@@ -9,7 +9,7 @@
 #include "gen/GeneratedCode.h"
 
 #include "ast/Node.h"
-#include "ast/Block.h"
+#include "parser/ProgramNode.h"
 #include "ast/VariableDeclaration.h"
 #include "ast/Assignment.h"
 #include "core/Variable.h"
@@ -17,24 +17,27 @@
 using namespace std;
 using namespace sugar;
 
-ast::Node* programStmts;
+parser::ProgramNode* programStmts;
 gen::Interpreter *interpreter;
+bool runSucceed = true;
 bool interactive = false;
 #if SHELL_USE_COLOR
 bool useColor = false;
 #endif
 
-void onMainStatement(ast::Node *programStmts, ast::Node *newStmt) {
+void onMainStatement(parser::ProgramNode *programStmts, ast::Node *newStmt) {
     if((newStmt->getKind() == ast::Node::eFunctionDeclaration) ||
            (newStmt->getKind() == ast::Node::eVariableDeclaration)){
-        ((ast::Block*)(programStmts->data))->stmts->push_back(newStmt);
+        programStmts->addStmt(newStmt);
     }
     else {
 #if SHELL_USE_COLOR
-        interpreter->run(newStmt, programStmts, interactive, useColor);
+        if(!interpreter->run(newStmt, programStmts, interactive, useColor)){
 #else
-        interpreter->run(newStmt, programStmts, interactive);
+        if(!interpreter->run(newStmt, programStmts, interactive)){
 #endif
+            runSucceed = false;
+        }
     }
 }
 
@@ -54,8 +57,7 @@ int main(int argc, char **argv) {
     }
 
     interpreter = new gen::Interpreter();
-    YYLTYPE locStart;
-    programStmts = ast::Block::create(locStart);
+    programStmts = new parser::ProgramNode(filename);
 
     interactive = (stdin == file);
 #ifndef OS_WINDOWS
@@ -69,7 +71,7 @@ int main(int argc, char **argv) {
     bool succeed = parser.parse(file, filename, *programStmts, onMainStatement);
 
     delete programStmts;
-    return succeed ? 0 : 1;
+    return succeed && (interactive || runSucceed) ? 0 : 1;
 }
 
 

@@ -60,7 +60,10 @@ public:
     llvm::Function* getInternalFunction(const std::string &name);
     void addInternalFunction(const std::string &name, utils::Getter<llvm::Function*>);
     void addError(const std::string &error, YYLTYPE *location);
+    void addError(const std::string &error, YYLTYPE *location, const std::string &details);
+    void addError(const std::string &error, YYLTYPE *location, const std::list<std::string> &details);
     bool maxErrorCountReached() const;
+    bool hasErrors() const;
 
 protected:
     std::map<const std::string, utils::Getter<llvm::Function*> > _internalFunctions;

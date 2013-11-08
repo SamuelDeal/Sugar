@@ -34,7 +34,7 @@ class AbstractFunction
 {
 public:
     AbstractFunction(std::function<llvm::Function * ()> fnDeclGenerator,
-                     std::function<void (llvm::Function*)> fnImplGenerator,
+                     std::function<bool (llvm::Function*)> fnImplGenerator,
                      Type* returnType, const std::list<const Type *> &argTypes);
     AbstractFunction(std::function<llvm::Function * ()> fnDeclGenerator, ast::Node *funcDecl,
                      Type* returnType, const std::list<const Type *> &argTypes);
@@ -48,7 +48,7 @@ public:
     NativeFunction getNative() const;
     const Type* getReturnType() const;
     operator llvm::Function*();
-    void setImplementationGenerator(std::function<void (llvm::Function*)> generator);
+    void setImplementationGenerator(std::function<bool (llvm::Function*)> generator);
     ast::Node *getDeclaration() const;
 
 protected:
@@ -66,8 +66,9 @@ protected:
         struct {
             llvm::Function *llvmFunction;
             std::function<llvm::Function* ()> fnDeclGenerator;
-            std::function<void (llvm::Function*)> fnImplGenerator;
+            std::function<bool (llvm::Function*)> fnImplGenerator;
             ast::Node *funcDeclNode;
+            bool implError;
         } irFunction;
     } _impl;
 };

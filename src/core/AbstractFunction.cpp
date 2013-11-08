@@ -6,7 +6,7 @@ namespace sugar {
 namespace core {
 
 AbstractFunction::AbstractFunction(std::function<llvm::Function * ()> fnDeclGenerator,
-                                   std::function<void (llvm::Function*)> fnImplGenerator,
+                                   std::function<bool (llvm::Function*)> fnImplGenerator,
                                    Type* returnType, const std::list<const Type *> &argTypes):
     _argsTypes(argTypes), _returnType(returnType){
     _native = false;
@@ -14,7 +14,7 @@ AbstractFunction::AbstractFunction(std::function<llvm::Function * ()> fnDeclGene
     _impl.irFunction.fnDeclGenerator = fnDeclGenerator;
     _impl.irFunction.fnImplGenerator = fnImplGenerator;
     _impl.irFunction.funcDeclNode = NULL;
-
+    _impl.irFunction.implError = false;
 }
 
 AbstractFunction::AbstractFunction(std::function<llvm::Function * ()> fnDeclGenerator, ast::Node *funcDecl,
@@ -24,6 +24,7 @@ AbstractFunction::AbstractFunction(std::function<llvm::Function * ()> fnDeclGene
     _impl.irFunction.llvmFunction = NULL;
     _impl.irFunction.fnDeclGenerator = fnDeclGenerator;
     _impl.irFunction.funcDeclNode = funcDecl;
+    _impl.irFunction.implError = false;
 }
 
 AbstractFunction::AbstractFunction(NativeFunction fn, Type* returnType, const std::list<const Type *> &argTypes):
@@ -36,17 +37,17 @@ AbstractFunction::~AbstractFunction(){
 }
 
 bool AbstractFunction::isUsed() const {
-    return _native || (_impl.irFunction.llvmFunction != NULL);
+    return _native || (_impl.irFunction.llvmFunction != NULL && _impl.irFunction.implError == false);
 }
 
-void AbstractFunction::setImplementationGenerator(std::function<void (llvm::Function*)> generator){
+void AbstractFunction::setImplementationGenerator(std::function<bool (llvm::Function*)> generator){
     if(_native){
         return;
     }
     _impl.irFunction.fnImplGenerator = generator;
     _impl.irFunction.funcDeclNode = NULL;
-    if(isUsed()){
-        _impl.irFunction.fnImplGenerator(_impl.irFunction.llvmFunction);
+    if(isUsed() && !_impl.irFunction.implError){
+        _impl.irFunction.implError = !_impl.irFunction.fnImplGenerator(_impl.irFunction.llvmFunction);
     }
 }
 
@@ -75,13 +76,16 @@ AbstractFunction::operator llvm::Function*() {
     if(_native){
         return NULL;
     }
-    if(_impl.irFunction.llvmFunction == NULL){
+    if(_impl.irFunction.llvmFunction == NULL && !_impl.irFunction.implError){
         _impl.irFunction.llvmFunction = _impl.irFunction.fnDeclGenerator();
-        if(_impl.irFunction.fnImplGenerator){
-            _impl.irFunction.fnImplGenerator(_impl.irFunction.llvmFunction);
+        if(_impl.irFunction.llvmFunction == NULL){
+            _impl.irFunction.implError = true;
+        }
+        else if(_impl.irFunction.fnImplGenerator){
+            _impl.irFunction.implError = !_impl.irFunction.fnImplGenerator(_impl.irFunction.llvmFunction);
         }
     }
-    return _impl.irFunction.llvmFunction;
+    return _impl.irFunction.implError ? NULL : _impl.irFunction.llvmFunction;
 }
 
 NativeFunction AbstractFunction::getNative() const {

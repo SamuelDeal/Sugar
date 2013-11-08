@@ -25,6 +25,7 @@
 #include "pass/IrPass.h"
 #include "../types/all.h"
 #include "../utils/Getter.tpl.h"
+#include "../parser/ProgramNode.h"
 
 
 namespace sugar {
@@ -38,7 +39,7 @@ Generator::Generator(){
 Generator::~Generator(){
 }
 
-GeneratedCode* Generator::generate(ast::Node *programStmts) const{
+GeneratedCode* Generator::generate(parser::ProgramNode *programStmts) const{
 #if DEBUG_GENERATOR
     std::cerr << "\n========= Generating code... =========\n";
 #endif
@@ -61,6 +62,11 @@ GeneratedCode* Generator::generate(ast::Node *programStmts) const{
     gen.pushBlock(mainBlock, ScopeType::Function|ScopeType::Main);
     fnPass.parseNode(programStmts, gen);
     irPass.parseNode(programStmts, gen);
+
+    if(gen.hasErrors()){
+        return NULL;
+    }
+
     gen.builder.CreateRet(llvm::ConstantInt::get(llvm::Type::getInt32Ty(gen.context), 0, true));
 #if DEBUG_GENERATOR
     std::cerr << "\n========= Code is generated. =========\n";
@@ -115,7 +121,7 @@ Function* Generator::generateEchoBoolFunction(Generation &gen) const {
                     gen.module
                );
         return func;
-    }, [=, &gen] (llvm::Function *func) {
+    }, [=, &gen] (llvm::Function *func) -> bool {
         llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
 
         const char *trueConstValue = "true\n";
@@ -149,6 +155,8 @@ Function* Generator::generateEchoBoolFunction(Generation &gen) const {
         args.push_back(displayed);
         llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
         llvm::ReturnInst::Create(gen.context, bblock);
+
+        return true;
     });
 
     return fn;
@@ -171,7 +179,7 @@ Function* Generator::generateEchoIntFunction(Generation &gen) const {
                     gen.module
                );
         return func;
-    }, [=, &gen] (llvm::Function *func) {
+    }, [=, &gen] (llvm::Function *func) -> bool {
 
         llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
         const char *constValue = "%lld\n";
@@ -196,6 +204,8 @@ Function* Generator::generateEchoIntFunction(Generation &gen) const {
 
         llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
         llvm::ReturnInst::Create(gen.context, bblock);
+
+        return true;
     });
 
     return fn;
@@ -217,7 +227,7 @@ Function* Generator::generateEchoFloatFunction(Generation &gen) const {
                     gen.module
                );
         return func;
-    }, [=, &gen] (llvm::Function *func) {
+    }, [=, &gen] (llvm::Function *func) -> bool {
         llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
 
         const char *constValue = "%f\n";
@@ -241,6 +251,8 @@ Function* Generator::generateEchoFloatFunction(Generation &gen) const {
 
         llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
         llvm::ReturnInst::Create(gen.context, bblock);
+
+        return true;
     });
 
     return fn;

@@ -57,6 +57,7 @@ public:
     llvm::Value *getRef();
 
 protected:
+    Node(Kind type, NodeData *data);
     Kind _kind;
     const core::Type *_type;
     utils::Getter<llvm::Value*> _value;

@@ -3,7 +3,7 @@
 #include "../utils/config_checked.h"
 #include "../utils/utils.h"
 #include "GeneratedCode.h"
-#include "../ast/Block.h"
+#include "../parser/ProgramNode.h"
 #include "Generation.h"
 #include "../ast/all.h"
 #include "../core/Type.h"
@@ -33,7 +33,7 @@ Interpreter::Interpreter() {
 }
 
 Interpreter::~Interpreter() {
-    std::map<ast::Node *, Interpretation*>::iterator it;
+    std::map<parser::ProgramNode*, Interpretation*>::iterator it;
     for(it = _interpretations.begin(); it != _interpretations.end(); it++){
         delete(it->second);
         ++it;
@@ -46,9 +46,9 @@ Interpreter::Interpretation::~Interpretation() {
 }
 
 #if SHELL_USE_COLOR
-Interpreter::Interpretation* Interpreter::initProgram(ast::Node *block, bool useColor){
+Interpreter::Interpretation* Interpreter::initProgram(parser::ProgramNode *block, bool useColor){
 #else
-Interpreter::Interpretation* Interpreter::initProgram(ast::Node *block){
+Interpreter::Interpretation* Interpreter::initProgram(parser::ProgramNode *block){
 #endif
     Generation *generation = new Generation();
     Generation &gen = *generation;
@@ -68,11 +68,11 @@ Interpreter::Interpretation* Interpreter::initProgram(ast::Node *block){
 }
 
 #if SHELL_USE_COLOR
-Interpreter::Interpretation* Interpreter::getOrCreateInterpretation(ast::Node *programBlock, bool useColor){
+Interpreter::Interpretation* Interpreter::getOrCreateInterpretation(parser::ProgramNode *programBlock, bool useColor){
 #else
-Interpreter::Interpretation* Interpreter::getOrCreateInterpretation(ast::Node *programBlock){
+Interpreter::Interpretation* Interpreter::getOrCreateInterpretation(parser::ProgramNode *programBlock){
 #endif
-    std::map<ast::Node *, Interpretation*>::iterator it = _interpretations.find(programBlock);
+    std::map<parser::ProgramNode*, Interpretation*>::iterator it = _interpretations.find(programBlock);
     if(it == _interpretations.end()){
 #if SHELL_USE_COLOR
         it = _interpretations.insert(std::make_pair(programBlock, initProgram(programBlock, useColor))).first;
@@ -86,9 +86,9 @@ Interpreter::Interpretation* Interpreter::getOrCreateInterpretation(ast::Node *p
 
 
 #if SHELL_USE_COLOR
-void Interpreter::run(ast::Node *stmt, ast::Node *programBlock, bool interactive, bool useColor) {
+bool Interpreter::run(ast::Node *stmt, parser::ProgramNode *programBlock, bool interactive, bool useColor) {
 #else
-void Interpreter::run(ast::Node *stmt, ast::Node *programBlock, bool interactive) {
+bool Interpreter::run(ast::Node *stmt, parser::ProgramNode *programBlock, bool interactive) {
 #endif
     static int count = 0;
     ++count;
@@ -103,13 +103,17 @@ void Interpreter::run(ast::Node *stmt, ast::Node *programBlock, bool interactive
     pass::FunctionLookupPass fnPass;
     pass::IrPass irPass;
 
-
+    bool succeed = true;
     int stmtCount = 0;
     for(std::list<ast::Node*>::iterator it = ((ast::Block*)(programBlock->data))->stmts->begin();
             it != ((ast::Block*)(programBlock->data))->stmts->end(); it++){
         if(stmtCount >= intr.stmtCount){
-            fnPass.parseNode(*it, gen);
-            irPass.parseNode(*it, gen);
+            if(!fnPass.parseNode(*it, gen)){
+                succeed = false;
+            }
+            if(!irPass.parseNode(*it, gen)){
+                succeed = false;
+            }
         }
         ++stmtCount;
     }
@@ -121,9 +125,14 @@ void Interpreter::run(ast::Node *stmt, ast::Node *programBlock, bool interactive
 
     gen.pushBlock(runBlock, ScopeType::Main|ScopeType::Function);
 
-    fnPass.parseNode(stmt, gen);
-    irPass.parseNode(stmt, gen);
-    if(interactive){
+
+    if(!fnPass.parseNode(stmt, gen)){
+        succeed = false;
+    }
+    if(!irPass.parseNode(stmt, gen)){
+        succeed = false;
+    }
+    if(interactive && succeed){
         printResult(stmt->getValue(), stmt, gen);
     }
     gen.popBlock();
@@ -152,6 +161,7 @@ void Interpreter::run(ast::Node *stmt, ast::Node *programBlock, bool interactive
 #if DEBUG_GENERATOR
     std::cerr << "\n =========== Code was run. ==============" << std::endl;
 #endif
+    return succeed;
 }
 
 void Interpreter::printResult(llvm::Value *value, ast::Node *stmt, Generation &gen) const {
@@ -205,7 +215,7 @@ Function* Interpreter::generateEchoBoolFunction(Generation &gen) const {
                     gen.module
                );
         return func;
-    },[=, &gen] (llvm::Function *func){
+    },[=, &gen] (llvm::Function *func) -> bool {
         llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
         const char *trueConstValue;
     #if SHELL_USE_COLOR
@@ -258,6 +268,8 @@ Function* Interpreter::generateEchoBoolFunction(Generation &gen) const {
         args.push_back(displayed);
         llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
         llvm::ReturnInst::Create(gen.context, bblock);
+
+        return true;
     });
     return fn;
 }
@@ -278,7 +290,7 @@ Function* Interpreter::generateEchoIntFunction(Generation &gen) const {
                     gen.module
                );
         return func;
-    },[=, &gen] (llvm::Function *func){
+    },[=, &gen] (llvm::Function *func) -> bool {
         llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
 
         const char *constValue;
@@ -313,7 +325,7 @@ Function* Interpreter::generateEchoIntFunction(Generation &gen) const {
         llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
         llvm::ReturnInst::Create(gen.context, bblock);
 
-        return func;
+        return true;
     });
     return fn;
 }
@@ -334,7 +346,7 @@ Function* Interpreter::generateEchoFloatFunction(Generation &gen) const {
                     gen.module
                );
         return func;
-    },[=, &gen] (llvm::Function *func){
+    },[=, &gen] (llvm::Function *func) -> bool {
         llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
 
         const char *constValue;
@@ -369,7 +381,7 @@ Function* Interpreter::generateEchoFloatFunction(Generation &gen) const {
         llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
         llvm::ReturnInst::Create(gen.context, bblock);
 
-        return func;
+        return true;
     });
     return fn;
 }
@@ -389,7 +401,7 @@ Function* Interpreter::generateEchoBoolResultFunction(Generation &gen) const {
                     gen.module
                );
         return func;
-    },[=, &gen] (llvm::Function *func){
+    },[=, &gen] (llvm::Function *func) -> bool {
         llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
 
         const char *trueConstValue;
@@ -444,7 +456,7 @@ Function* Interpreter::generateEchoBoolResultFunction(Generation &gen) const {
         llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
         llvm::ReturnInst::Create(gen.context, bblock);
 
-        return func;
+        return true;
     });
     return fn;
 }
@@ -465,7 +477,7 @@ Function* Interpreter::generateEchoIntResultFunction(Generation &gen) const {
                     gen.module
                );
         return func;
-    },[=, &gen] (llvm::Function *func){
+    },[=, &gen] (llvm::Function *func) -> bool {
         llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
 
         const char *constValue;
@@ -500,7 +512,7 @@ Function* Interpreter::generateEchoIntResultFunction(Generation &gen) const {
         llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
         llvm::ReturnInst::Create(gen.context, bblock);
 
-        return func;
+        return true;
     });
     return fn;
 }
@@ -521,7 +533,7 @@ Function* Interpreter::generateEchoFloatResultFunction(Generation &gen) const {
                     gen.module
                );
         return func;
-    },[=, &gen] (llvm::Function *func){
+    },[=, &gen] (llvm::Function *func) -> bool {
         llvm::BasicBlock *bblock = llvm::BasicBlock::Create(gen.context, "entry", func, 0);
 
         const char *constValue;
@@ -556,7 +568,7 @@ Function* Interpreter::generateEchoFloatResultFunction(Generation &gen) const {
         llvm::CallInst *call = llvm::CallInst::Create(gen.getInternalFunction("printf"), makeArrayRef(args), "", bblock);
         llvm::ReturnInst::Create(gen.context, bblock);
 
-        return func;
+        return true;
     });
     return fn;
 }

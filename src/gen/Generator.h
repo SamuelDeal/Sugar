@@ -14,6 +14,10 @@ namespace ast {
     class Node;
 }
 
+namespace parser {
+    class ProgramNode;
+}
+
 namespace gen {
 
 class GeneratedCode;
@@ -26,7 +30,7 @@ public:
     Generator();
     virtual ~Generator();
 
-    virtual GeneratedCode* generate(ast::Node *programStmts) const;
+    virtual GeneratedCode* generate(parser::ProgramNode *programStmts) const;
 
 protected:
     virtual void initCore(Generation &gen) const;

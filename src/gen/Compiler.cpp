@@ -25,8 +25,11 @@ Compiler::Compiler() {
 Compiler::~Compiler() {
 }
 
-bool Compiler::compile(ast::Node &programStmts, const std::string &outputFile) const {
+bool Compiler::compile(parser::ProgramNode &programStmts, const std::string &outputFile) const {
     GeneratedCode *genCode = generate(&programStmts);
+    if(genCode == NULL){
+        return false;
+    }
     std::string objectFilename = tmpnam(NULL);
     if(!generateObjectFile(genCode, objectFilename)){
         std::cout << "Unable to generate object file" << std::endl;

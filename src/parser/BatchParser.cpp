@@ -4,7 +4,7 @@
 #define INTERACTIVE_INPUT 0
 #include "lexer.batch.hpp"
 
-#include "../ast/Block.h"
+#include "ProgramNode.h"
 
 namespace sugar {
 namespace parser {
@@ -13,11 +13,11 @@ BatchParser::BatchParser()
 {
 }
 
-void BatchParser_onProgramStmt(ast::Node *programStmts, ast::Node *newStmt){
-    ((ast::Block *)(programStmts->data))->stmts->push_back(newStmt);
+void BatchParser_onProgramStmt(ProgramNode *programStmts, ast::Node *newStmt){
+    programStmts->addStmt(newStmt);
 }
 
-bool BatchParser::parse(FILE *file, const std::string *filename, ast::Node &programStmts) const {
+bool BatchParser::parse(FILE *file, const std::string *filename, ProgramNode &programStmts) const {
     yydebug = DEBUG_PARSER;
 
     yyscan_t scanner;
@@ -34,7 +34,7 @@ bool BatchParser::parse(FILE *file, const std::string *filename, ast::Node &prog
 
     yylex_destroy(scanner);
     fclose(file);
-    return succeed && (lexerCtx.errorCount == 0);
+    return succeed && !lexerCtx.hasError;
 }
 
 

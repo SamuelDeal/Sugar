@@ -11,7 +11,7 @@ class Cast : public AbstractFunction
 public:
     Cast(Type* fromType, Type* toType,
                        std::function<llvm::Function * ()> fnDeclGenerator,
-                       std::function<void (llvm::Function*)> fnImplGenerator);
+                       std::function<bool (llvm::Function*)> fnImplGenerator);
     Cast(Type* fromType, Type* toType, ast::Node *fnDeclNode,
                        std::function<llvm::Function * ()> fnDeclGenerator);
     Cast(NativeFunction fn, Type* fromType, Type* toType);

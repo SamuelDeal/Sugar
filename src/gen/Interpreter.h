@@ -13,6 +13,10 @@ namespace ast {
     class Statement;
 }
 
+namespace parser {
+    class ProgramNode;
+}
+
 namespace gen {
 
 class Interpreter : public Generator
@@ -21,9 +25,9 @@ public:
     Interpreter();
     virtual ~Interpreter();
 #if SHELL_USE_COLOR
-    void run(ast::Node *stmt, ast::Node *programBlock, bool interactive, bool useColor);
+    bool run(ast::Node *stmt, parser::ProgramNode *programBlock, bool interactive, bool useColor);
 #else
-    void run(ast::Node *stmt, ast::Node *programBlock, bool interactive);
+    bool run(ast::Node *stmt, parser::ProgramNode *programBlock, bool interactive);
 #endif
 
 protected:
@@ -35,11 +39,11 @@ protected:
     };
 
 #if SHELL_USE_COLOR
-    Interpretation* initProgram(ast::Node *programBlock, bool useColor);
-    Interpretation* getOrCreateInterpretation(ast::Node *programBlock, bool useColor);
+    Interpretation* initProgram(parser::ProgramNode *programBlock, bool useColor);
+    Interpretation* getOrCreateInterpretation(parser::ProgramNode *programBlock, bool useColor);
 #else
-    Interpretation* initProgram(ast::Node *programBlock);
-    Interpretation* getOrCreateInterpretation(ast::Node *programBlock);
+    Interpretation* initProgram(parser::ProgramNode *programBlock);
+    Interpretation* getOrCreateInterpretation(parser::ProgramNode *programBlock);
 #endif
 
 
@@ -57,7 +61,7 @@ protected:
 
 
 
-    std::map<ast::Node *, Interpretation*> _interpretations;
+    std::map<parser::ProgramNode *, Interpretation*> _interpretations;
 };
 
 } // namespace gen

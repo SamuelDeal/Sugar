@@ -1,0 +1,9 @@
+test/test028.test:1:0: error: unknown type Tata
+Tata tata()
+^
+
+test/test028.test:1:0: error: invalid function declaration
+Tata tata()
+^
+
+7

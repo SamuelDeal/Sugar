@@ -12,11 +12,13 @@ namespace ast {
 
 namespace parser {
 
+class ProgramNode;
+
 class BatchParser
 {
 public:
     BatchParser();
-    bool parse(FILE *file, const std::string *filename, ast::Node &programStmts) const;
+    bool parse(FILE *file, const std::string *filename, ProgramNode &programStmts) const;
 };
 
 } // namespace parser

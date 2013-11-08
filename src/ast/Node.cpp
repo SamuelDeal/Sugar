@@ -17,6 +17,13 @@ Node::Node(Node::Kind kind, NodeData *dataArg, YYLTYPE yylloc) {
     this->yylloc = yylloc;
 }
 
+Node::Node(Kind kind, NodeData *dataArg) {
+    _kind = kind;
+    _type = NULL;
+    _ref = NULL;
+    data = dataArg;
+}
+
 Node::~Node() {
     delete data;
 }

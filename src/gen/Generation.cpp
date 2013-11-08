@@ -5,6 +5,8 @@
 #include <iostream>
 #include "../utils/Getter.tpl.h"
 #include "../parser/parser.hpp"
+#include <list>
+#include <string>
 
 void yyerror(YYLTYPE *locp, sugar::parser::LexerContext *lexerCtx, const char *err);
 
@@ -102,8 +104,30 @@ void Generation::addError(const std::string &error, YYLTYPE *location){
     ++_errorCount;
 }
 
+void Generation::addError(const std::string &error, YYLTYPE *location, const std::string &details){
+    if(!maxErrorCountReached()){
+        yyerror(location, NULL, error.c_str());
+        std::cout << "\t" << details << std::endl;
+    }
+    ++_errorCount;
+}
+
+void Generation::addError(const std::string &error, YYLTYPE *location, const std::list<std::string> &details){
+    if(!maxErrorCountReached()){
+        yyerror(location, NULL, error.c_str());
+        for(std::list<std::string>::const_iterator i = details.begin(); i != details.end(); i++){
+            std::cout << "\t" << *i << std::endl;
+        }
+    }
+    ++_errorCount;
+}
+
 bool Generation::maxErrorCountReached() const {
     return _errorCount > MAX_ERROR_COUNT;
+}
+
+bool Generation::hasErrors() const {
+    return _errorCount > 0;
 }
 
 } // namespace gen

@@ -5,7 +5,7 @@
 namespace sugar {
 namespace parser {
 
-LexerContext::LexerContext(ast::Node *programStmtsArg, const std::string *filenameArg,
+LexerContext::LexerContext(ProgramNode *programStmtsArg, const std::string *filenameArg,
                            bool interactiveArg, stmtFunction callback): filename(filenameArg)
 {
     interactive = interactiveArg;
@@ -24,12 +24,10 @@ LexerContext::LexerContext(ast::Node *programStmtsArg, const std::string *filena
     indents.top()->current = 0;
 
     errorCount = 0;
+    hasError = false;
 }
 
 LexerContext::~LexerContext(){
-    if(filename != NULL){
-        delete filename;
-    }
 }
 
 void LexerContext::onProgramStmt(ast::Node *stmt){
