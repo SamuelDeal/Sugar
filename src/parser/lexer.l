@@ -147,7 +147,8 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
     }
 <*><<EOF>>                  {
     if(yyget_extra(yyscanner)->interactive){
-        yyterminate();
+        std::cout << std::endl;
+        return TOKEN_QUIT;
     }
     if(yyget_extra(yyscanner)->eof){
         int result = yyget_extra(yyscanner)->tokens.front();
@@ -551,7 +552,7 @@ static void lexer_input(char *buf, int *result, int max, void* yyscanner);
     }
     q|quit|exit                 {
         if(yyget_extra(yyscanner)->interactive){
-            yyterminate();
+            return TOKEN_QUIT;
         }
         else{
             lexPushState(lex_state_spaceaware, yyscanner);

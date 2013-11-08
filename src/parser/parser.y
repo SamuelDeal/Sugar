@@ -114,7 +114,7 @@ typedef struct YYLTYPE {
 %token <token> TOK_INDENT TOK_BAD_INDENT TOK_OUTDENT TOK_END_INSTR TOK_NO_SPACE
 %token <token> TRETURN TIF TELSE TTRUE TFALSE
 %token <token> TCEQ TPLUS TMINUS TMUL TDIV TCOLON TOR TAND TWHILE TMINUSMINUS TPLUSPLUS
-%token <token> UNKNOWN_TOKEN
+%token <token> UNKNOWN_TOKEN TOKEN_QUIT
 
 /* Types */
 %type <ident> ident
@@ -157,6 +157,7 @@ typedef struct YYLTYPE {
 %%
 
 program         : program_stmts { }
+                | exit { }
                 ;
 
 program_stmts   : program_stmt { if($<stmt>1 != NULL) { lexerCtx->onProgramStmt($<stmt>1); } }
@@ -374,6 +375,13 @@ error_detected  : error {
                             YYABORT;
                         }
                     }
+                }
+                ;
+
+exit            : TOKEN_QUIT {
+                    yyclearin;
+                    yyerrok;
+                    YYACCEPT;
                 }
                 ;
 
