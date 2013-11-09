@@ -271,9 +271,11 @@ bool IrPass::parse(ast::Node *node, ast::FunctionDeclaration *data, Generation &
             return false;
         }
         llvm::Value *blockReturnValue = data->impl->getValue();
-        if(data->impl->getType() != returnType){
+        const Type *implType = data->impl->getType();
+        if(implType != returnType){
+
             gen.addError("function type mismatch with declaration", &data->id->yylloc,
-                         "declared type: "+returnType->getName()+", effective return: "+data->impl->getType()->getName());
+                         "declared type: "+returnType->getName()+", effective return: "+implType->getName());
             gen.popBlock();
             return false;
         }
@@ -535,6 +537,7 @@ bool IrPass::parse(ast::Node *node, ast::ReturnStmt *data, Generation &gen) {
     }
     llvm::Value* returnExpr = gen.builder.CreateRet(data->expression->getValue());
     gen.scope->setReturnReach();
+    node->setType(*data->expression->getType());
     node->setValue(returnExpr);
     return true;
 }
