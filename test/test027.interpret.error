@@ -1,5 +1,5 @@
 5
-test/test027.test:2:7: error: syntax error, unexpected UNKNOWN_TOKEN, expecting TOK_END_INSTR
+test/test027.test:2:7: error: syntax error, unexpected unknown token, expecting end of instruction
 echo 6 $ + 7
        ^
 

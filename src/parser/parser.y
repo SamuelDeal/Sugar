@@ -108,14 +108,46 @@ typedef struct YYLTYPE {
 %}
 
 /* Token list */
-%token <string> TIDENTIFIER TINTEGER TDOUBLE TTYPENAME
-%token <token> TCNE TCLT TCLE TCGT TCGE TEQUAL
-%token <token> TLPAREN TRPAREN TLBRACE TRBRACE TCOMMA TDOT
-%token <token> TOK_INDENT TOK_BAD_INDENT TOK_OUTDENT TOK_END_INSTR TOK_NO_SPACE
-%token <token> TRETURN TIF TELSE TTRUE TFALSE
-%token <token> TCEQ TPLUS TMINUS TMUL TDIV TCOLON TOR TAND TWHILE TMINUSMINUS TPLUSPLUS
-%token <token> UNKNOWN_TOKEN TOKEN_QUIT
-
+%token <string> TIDENTIFIER     "identifier"
+%token <string> TINTEGER        "integer value"
+%token <string> TDOUBLE         "float value"
+%token <string> TTYPENAME       "type name"
+%token <token> TCNE             "!="
+%token <token> TCLT             "<"
+%token <token> TCLE             "<="
+%token <token> TCGT             ">"
+%token <token> TCGE             ">="
+%token <token> TEQUAL           "="
+%token <token> TLPAREN          "("
+%token <token> TRPAREN          ")"
+%token <token> TLBRACE          "{"
+%token <token> TRBRACE          "}"
+%token <token> TCOMMA           ","
+%token <token> TDOT             "."
+%token <token> TOK_INDENT       "indentation"
+%token <token> TOK_BAD_INDENT   "bad indentation"
+%token <token> TOK_OUTDENT      "dedindentation"
+%token <token> TOK_END_INSTR    "end of instruction"
+%token <token> TOK_NO_SPACE     "no space"
+%token <token> TRETURN          "return keyword"
+%token <token> TIF              "if keyword"
+%token <token> TELSE            "else keyword"
+%token <token> TTRUE            "true keyword"
+%token <token> TFALSE           "false keyword"
+%token <token> TCEQ             "=="
+%token <token> TPLUS            "+"
+%token <token> TMINUS           "-"
+%token <token> TMUL             "*"
+%token <token> TDIV             "/"
+%token <token> TCOLON           ";"
+%token <token> TOR              "||"
+%token <token> TAND             "&&"
+%token <token> TWHILE           "while keyword"
+%token <token> TMINUSMINUS      "--"
+%token <token> TPLUSPLUS        "++"
+%token <token> UNKNOWN_TOKEN    "unknown token"
+%token <token> TOKEN_QUIT       "end of program"
+%token END      0               "end of file"
 /* Types */
 %type <ident> ident
 %type <type_ident> typename
