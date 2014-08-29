@@ -4,8 +4,8 @@
 #include <list>
 
 #include <llvm/Support/TargetSelect.h>
-#include <llvm/Instructions.h>
-#include <llvm/InstrTypes.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/InstrTypes.h>
 /*
 #include "../config_checked.h"
 #include "../ast/all.h"

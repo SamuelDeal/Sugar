@@ -8,7 +8,7 @@
 
 #include <sstream>
 #include <iostream>
-#include <llvm/BasicBlock.h>
+#include <llvm/IR/BasicBlock.h>
 
 namespace sugar {
 namespace core {

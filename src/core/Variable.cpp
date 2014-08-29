@@ -1,5 +1,5 @@
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Value.h>
+#include <llvm/IR/Value.h>
 
 #include "Variable.h"
 #include "../utils/utils.h"

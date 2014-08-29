@@ -52,7 +52,7 @@ bool Compiler::generateObjectFile(GeneratedCode *genCode, const std::string &out
     llvm::InitializeAllAsmParsers();
 
     std::string error;
-    llvm::tool_output_file out(output.c_str(), error, llvm::raw_fd_ostream::F_Binary);
+    llvm::tool_output_file out(output.c_str(), error, llvm::sys::fs::F_Binary);
     if (!error.empty()) {
         return false;
     }

@@ -1,8 +1,8 @@
 #include "GeneratedCode.h"
 
 #include "../utils/utils.h"
-#include <llvm/Function.h>
-#include <llvm/BasicBlock.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/BasicBlock.h>
 
 #include "Generation.h"
 

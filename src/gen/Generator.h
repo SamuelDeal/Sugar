@@ -1,8 +1,8 @@
 #ifndef SUGAR_GEN_GENERATOR_H
 #define SUGAR_GEN_GENERATOR_H
 
-#include <llvm/Module.h>
-#include <llvm/IRBuilder.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/IRBuilder.h>
 
 #include "../core/Scope.h"
 #include "../core/CastGraph.h"

@@ -13,6 +13,7 @@
 #include <string>
 #include <iostream>
 #include <string.h>
+#include <unistd.h>
 
 #if DEBUG_LEXER
 #define LOG_LEXER(str, ...) fprintf(stderr, "\nlexer: " str "\n", ##__VA_ARGS__)
@@ -100,7 +101,7 @@ void yyerror(YYLTYPE *locp, sugar::parser::LexerContext *lexerCtx, const char *e
 #define YY_INPUT(buf,result,max_size) \
     lexer_input((char *)buf, &result, max_size, yyscanner)
 
-static void lexer_input(char *buf, int *result, int max, void* yyscanner);
+static void lexer_input(char *buf, unsigned long int *result, int max, void* yyscanner);
 
 #endif
 

@@ -28,7 +28,7 @@ extern FILE *rl_instream;
 
 // rl_input puts upto MAX characters into BUF with the number put in
 // BUF placed in *RESULT.
-static void lexer_input (char *buf, int  *result, int max, void* yyscanner) {
+static void lexer_input (char *buf, unsigned long int *result, int max, void* yyscanner) {
     if (yyget_in(yyscanner) != rl_instream) { //not stdin so read as usual
         while ( (*result = read( fileno(yyget_in(yyscanner)), buf, max )) < 0 ) {
             if (errno != EINTR) {
@@ -112,7 +112,7 @@ char * null_prompt (EditLine *el)
 // BUF placed in *RESULT.  If the yy input file is the same as
 // stdin, use editline.  Otherwise, just read it.
 
-static void lexer_input (char *buf, int *result, int max){
+static void lexer_input (char *buf, unsigned long int *result, int max){
     if (!edit || yyin != stdin)
     {
         while ( (*result = read( fileno(yyin), buf, max )) < 0 )

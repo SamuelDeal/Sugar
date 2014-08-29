@@ -6,9 +6,9 @@
 #include "../../ast/all.h"
 
 #include <llvm/Support/TargetSelect.h>
-#include <llvm/Instructions.h>
-#include <llvm/InstrTypes.h>
-#include <llvm/GlobalVariable.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/InstrTypes.h>
+#include <llvm/IR/GlobalVariable.h>
 
 #include "../../core/Type.h"
 #include "../../core/Function.h"

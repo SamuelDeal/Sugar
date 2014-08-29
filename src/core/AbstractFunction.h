@@ -4,9 +4,9 @@
 #include <string>
 #include <list>
 #include <vector>
-
-#include <llvm/Function.h>
 #include <functional>
+
+#include <llvm/IR/Function.h>
 
 namespace llvm {
     class Function;
